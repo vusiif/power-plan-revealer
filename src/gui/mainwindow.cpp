@@ -6,15 +6,19 @@
 #include <QHeaderView>
 #include <QMessageBox>
 #include <QString>
+#include <QTreeWidgetItem>
+#include <QAbstractItemView>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),
-      table(nullptr),
+      tree(nullptr),
+      searchEdit(nullptr),
       refreshButton(nullptr),
       onlyHiddenCheckBox(nullptr),
-      statusLabel(nullptr) {
+      statusLabel(nullptr),
+      totalSettingCount(0) {
     setupUi();
-    reloadTable();
+    reloadTree();
 }
 
 void MainWindow::setupUi() {
@@ -25,6 +29,10 @@ void MainWindow::setupUi() {
 
     auto *topLayout = new QHBoxLayout();
 
+    searchEdit = new QLineEdit(this);
+    searchEdit->setPlaceholderText("Search name or GUID...");
+    searchEdit->setClearButtonEnabled(true);
+
     refreshButton = new QPushButton("Refresh", this);
 
     onlyHiddenCheckBox = new QCheckBox("Only hidden", this);
@@ -32,46 +40,101 @@ void MainWindow::setupUi() {
 
     statusLabel = new QLabel(this);
 
+    topLayout->addWidget(searchEdit, 1);
     topLayout->addWidget(refreshButton);
     topLayout->addWidget(onlyHiddenCheckBox);
-    topLayout->addStretch();
     topLayout->addWidget(statusLabel);
 
-    table = new QTableWidget(this);
-    table->setColumnCount(5);
-
-    table->setHorizontalHeaderLabels({
-        "Subgroup",
-        "Setting",
+    tree = new QTreeWidget(this);
+    tree->setColumnCount(3);
+    tree->setHeaderLabels({
+        "Name",
         "Hidden",
-        "Subgroup GUID",
-        "Setting GUID"
+        "GUID"
     });
 
-    table->setSelectionBehavior(QAbstractItemView::SelectRows);
-    table->setSelectionMode(QAbstractItemView::SingleSelection);
-    table->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    table->setAlternatingRowColors(true);
+    tree->setRootIsDecorated(true);
+    tree->setItemsExpandable(true);
+    tree->setExpandsOnDoubleClick(true);
+    tree->setAlternatingRowColors(true);
+    tree->setUniformRowHeights(true);
+    tree->setIndentation(22);
 
-    table->horizontalHeader()->setStretchLastSection(false);
-    table->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
-    table->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
-    table->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
-    table->horizontalHeader()->setSectionResizeMode(3, QHeaderView::ResizeToContents);
-    table->horizontalHeader()->setSectionResizeMode(4, QHeaderView::ResizeToContents);
+    tree->setSelectionBehavior(QAbstractItemView::SelectRows);
+    tree->setSelectionMode(QAbstractItemView::SingleSelection);
+    tree->setEditTriggers(QAbstractItemView::NoEditTriggers);
 
-    table->verticalHeader()->setVisible(false);
+    tree->header()->setStretchLastSection(false);
+    tree->header()->setSectionResizeMode(ColumnName, QHeaderView::Stretch);
+    tree->header()->setSectionResizeMode(ColumnHidden, QHeaderView::ResizeToContents);
+    tree->header()->setSectionResizeMode(ColumnGuid, QHeaderView::ResizeToContents);
 
     mainLayout->addLayout(topLayout);
-    mainLayout->addWidget(table);
+    mainLayout->addWidget(tree);
 
     setCentralWidget(central);
+
+    setStyleSheet(R"(
+        QMainWindow {
+            background: #f6f7f9;
+        }
+
+        QLineEdit {
+            padding: 6px 10px;
+            border: 1px solid #cfd4dc;
+            border-radius: 6px;
+            background: white;
+        }
+
+        QPushButton {
+            padding: 6px 12px;
+            border: 1px solid #c5cbd3;
+            border-radius: 6px;
+            background: #ffffff;
+        }
+
+        QPushButton:hover {
+            background: #eef3ff;
+        }
+
+        QCheckBox {
+            spacing: 6px;
+        }
+
+        QTreeWidget {
+            background: white;
+            border: 1px solid #d8dde5;
+            border-radius: 8px;
+            alternate-background-color: #f8fafc;
+        }
+
+        QTreeWidget::item {
+            padding: 4px;
+        }
+
+        QTreeWidget::item:selected {
+            background: #dbeafe;
+            color: #111827;
+        }
+
+        QHeaderView::section {
+            padding: 6px;
+            background: #eef1f5;
+            border: none;
+            border-right: 1px solid #d8dde5;
+            font-weight: 600;
+        }
+
+        QLabel {
+            color: #4b5563;
+        }
+    )");
 
     connect(
         refreshButton,
         &QPushButton::clicked,
         this,
-        &MainWindow::reloadTable
+        &MainWindow::reloadTree
     );
 
     connect(
@@ -79,13 +142,25 @@ void MainWindow::setupUi() {
         &QCheckBox::checkStateChanged,
         this,
         [this](Qt::CheckState) {
-            reloadTable();
+            reloadTree();
+        }
+    );
+
+    connect(
+        searchEdit,
+        &QLineEdit::textChanged,
+        this,
+        [this]() {
+            applyFilter();
         }
     );
 }
 
-void MainWindow::reloadTable() {
-    table->setRowCount(0);
+void MainWindow::reloadTree() {
+    tree->setUpdatesEnabled(false);
+    tree->clear();
+    subgroupItems.clear();
+    totalSettingCount = 0;
 
     const int hiddenOnly = onlyHiddenCheckBox->isChecked() ? 1 : 0;
 
@@ -96,6 +171,8 @@ void MainWindow::reloadTable() {
     );
 
     if (rc != ERROR_SUCCESS) {
+        tree->setUpdatesEnabled(true);
+
         QMessageBox::critical(
             this,
             "Error",
@@ -106,9 +183,17 @@ void MainWindow::reloadTable() {
         return;
     }
 
-    statusLabel->setText(
-        QString("%1 item(s)").arg(table->rowCount())
-    );
+    tree->sortItems(ColumnName, Qt::AscendingOrder);
+
+    if (onlyHiddenCheckBox->isChecked()) {
+        tree->expandAll();
+    } else {
+        tree->collapseAll();
+    }
+
+    applyFilter();
+
+    tree->setUpdatesEnabled(true);
 }
 
 int MainWindow::enumerateCallback(
@@ -129,32 +214,114 @@ void MainWindow::addPowerSettingItem(const PowerSettingItem *item) {
         return;
     }
 
-    const int row = table->rowCount();
-    table->insertRow(row);
+    const QString subgroupName = QString::fromWCharArray(item->subgroup_name);
+    const QString settingName = QString::fromWCharArray(item->setting_name);
+    const QString subgroupGuid = QString::fromWCharArray(item->subgroup_guid_text);
+    const QString settingGuid = QString::fromWCharArray(item->setting_guid_text);
+    const QString hiddenText = item->hidden ? "Yes" : "No";
 
-    auto *subgroupNameItem = new QTableWidgetItem(
-        QString::fromWCharArray(item->subgroup_name)
-    );
+    QTreeWidgetItem *subgroupItem = subgroupItems.value(subgroupGuid, nullptr);
 
-    auto *settingNameItem = new QTableWidgetItem(
-        QString::fromWCharArray(item->setting_name)
-    );
+    if (subgroupItem == nullptr) {
+        subgroupItem = new QTreeWidgetItem(tree);
 
-    auto *hiddenItem = new QTableWidgetItem(
-        item->hidden ? "Yes" : "No"
-    );
+        subgroupItem->setText(ColumnName, subgroupName);
+        subgroupItem->setText(ColumnHidden, "");
+        subgroupItem->setText(ColumnGuid, subgroupGuid);
 
-    auto *subgroupGuidItem = new QTableWidgetItem(
-        QString::fromWCharArray(item->subgroup_guid_text)
-    );
+        subgroupItem->setData(ColumnName, Qt::UserRole, subgroupGuid);
+        subgroupItem->setData(ColumnName, Qt::UserRole + 1, "subgroup");
 
-    auto *settingGuidItem = new QTableWidgetItem(
-        QString::fromWCharArray(item->setting_guid_text)
-    );
+        subgroupItem->setToolTip(ColumnName, subgroupName);
+        subgroupItem->setToolTip(ColumnGuid, subgroupGuid);
 
-    table->setItem(row, 0, subgroupNameItem);
-    table->setItem(row, 1, settingNameItem);
-    table->setItem(row, 2, hiddenItem);
-    table->setItem(row, 3, subgroupGuidItem);
-    table->setItem(row, 4, settingGuidItem);
+        QFont font = subgroupItem->font(ColumnName);
+        font.setBold(true);
+        subgroupItem->setFont(ColumnName, font);
+
+        subgroupItems.insert(subgroupGuid, subgroupItem);
+    }
+
+    auto *settingItem = new QTreeWidgetItem(subgroupItem);
+
+    settingItem->setText(ColumnName, settingName);
+    settingItem->setText(ColumnHidden, hiddenText);
+    settingItem->setText(ColumnGuid, settingGuid);
+
+    settingItem->setData(ColumnName, Qt::UserRole, subgroupGuid);
+    settingItem->setData(ColumnName, Qt::UserRole + 1, settingGuid);
+    settingItem->setData(ColumnName, Qt::UserRole + 2, item->hidden ? 1 : 0);
+
+    settingItem->setToolTip(ColumnName, settingName);
+    settingItem->setToolTip(ColumnGuid, settingGuid);
+
+    totalSettingCount++;
+}
+
+void MainWindow::applyFilter() {
+    const QString query = searchEdit->text().trimmed();
+
+    const bool hasQuery = !query.isEmpty();
+
+    int visibleSubgroupCount = 0;
+    int visibleSettingCount = 0;
+
+    for (int i = 0; i < tree->topLevelItemCount(); ++i) {
+        QTreeWidgetItem *subgroupItem = tree->topLevelItem(i);
+
+        const bool subgroupMatches =
+            subgroupItem->text(ColumnName).contains(query, Qt::CaseInsensitive) ||
+            subgroupItem->text(ColumnGuid).contains(query, Qt::CaseInsensitive);
+
+        bool hasVisibleChild = false;
+
+        for (int j = 0; j < subgroupItem->childCount(); ++j) {
+            QTreeWidgetItem *settingItem = subgroupItem->child(j);
+
+            const bool settingMatches =
+                settingItem->text(ColumnName).contains(query, Qt::CaseInsensitive) ||
+                settingItem->text(ColumnHidden).contains(query, Qt::CaseInsensitive) ||
+                settingItem->text(ColumnGuid).contains(query, Qt::CaseInsensitive);
+
+            const bool visible = !hasQuery || subgroupMatches || settingMatches;
+
+            settingItem->setHidden(!visible);
+
+            if (visible) {
+                hasVisibleChild = true;
+                visibleSettingCount++;
+            }
+        }
+
+        const bool subgroupVisible = !hasQuery || subgroupMatches || hasVisibleChild;
+
+        subgroupItem->setHidden(!subgroupVisible);
+
+        if (subgroupVisible) {
+            visibleSubgroupCount++;
+        }
+
+        if (hasQuery && subgroupVisible) {
+            subgroupItem->setExpanded(true);
+        }
+    }
+
+    if (hasQuery) {
+        statusLabel->setText(
+            QString("%1 / %2 item(s), %3 subgroup(s)")
+                .arg(visibleSettingCount)
+                .arg(totalSettingCount)
+                .arg(visibleSubgroupCount)
+        );
+    } else {
+        statusLabel->setText(
+            QString("%1 item(s), %2 subgroup(s)")
+                .arg(totalSettingCount)
+                .arg(tree->topLevelItemCount())
+        );
+    }
+}
+
+void MainWindow::updateStatus() {
+    applyFilter();
 }
