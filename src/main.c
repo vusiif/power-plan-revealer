@@ -26,9 +26,6 @@ static void print_usage(void) {
     wprintf(L"  power_settings_tool.exe hide <subgroup-guid> <setting-guid>\n");
     wprintf(L"      隐藏单个项目\n\n");
 
-    wprintf(L"  power_settings_tool.exe unhide-all\n");
-    wprintf(L"      取消隐藏所有项目，慎用\n\n");
-
     wprintf(L"      注意，所有guid可以带{}，也可以不带{}\n");
 }
 
@@ -148,15 +145,11 @@ int wmain(int argc, wchar_t **argv) {
     }
 
     if (wcscmp(argv[1], L"list") == 0) {
-        return list_power_settings(0, 0);
+        return list_power_settings(0);
     }
 
     if (wcscmp(argv[1], L"hidden") == 0) {
-        return list_power_settings(1, 0);
-    }
-
-    if (wcscmp(argv[1], L"unhide-all") == 0) {
-        return list_power_settings(1, 1);
+        return list_power_settings(1);
     }
 
     if (wcscmp(argv[1], L"unhide") == 0) {

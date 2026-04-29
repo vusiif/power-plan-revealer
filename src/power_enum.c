@@ -48,7 +48,7 @@ static void read_name(
     }
 }
 
-int list_power_settings(int hidden_only, int unhide_all) {
+int list_power_settings(int hidden_only) {
     GUID *scheme = NULL;
     DWORD rc = PowerGetActiveScheme(NULL, &scheme);
 
@@ -60,8 +60,6 @@ int list_power_settings(int hidden_only, int unhide_all) {
     wchar_t scheme_name[256];
     read_name(scheme, NULL, NULL, scheme_name, 256);
     wprintf(L"Active scheme: %s\n\n", scheme_name);
-
-    DWORD changed = 0;
 
     for (DWORD subgroup_index = 0; ; subgroup_index++) {
         GUID subgroup;
@@ -136,18 +134,6 @@ int list_power_settings(int hidden_only, int unhide_all) {
             wprintf(L"  - %s\n", setting_name);
             wprintf(L"    setting guid: %s\n", setting_guid);
             wprintf(L"    hidden      : %s\n", hidden ? L"yes" : L"no");
-
-            if (unhide_all && hidden) {
-                DWORD wr = unhide_setting(&subgroup, &setting);
-
-                if (wr == ERROR_SUCCESS) {
-                    wprintf(L"    action      : unhidden\n");
-                    changed++;
-                } else {
-                    wprintf(L"    action      : failed, error %lu\n", wr);
-                }
-            }
-
             wprintf(L"\n");
         }
 
@@ -155,12 +141,6 @@ int list_power_settings(int hidden_only, int unhide_all) {
             wprintf(L"\n");
         }
     }
-
-    if (unhide_all) {
-        PowerSetActiveScheme(NULL, scheme);
-        wprintf(L"Changed settings: %lu\n", changed);
-    }
-
     LocalFree(scheme);
     return 0;
 }
