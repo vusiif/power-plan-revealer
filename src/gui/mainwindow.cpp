@@ -13,6 +13,7 @@
 #include <QApplication>
 #include <QClipboard>
 #include <QSettings>
+#include <QCheckBox>
 #include <QFont>
 
 #include <string>
@@ -42,19 +43,19 @@ void MainWindow::setupUi() {
     auto *topLayout = new QHBoxLayout();
 
     searchEdit = new QLineEdit(this);
-    searchEdit->setPlaceholderText("Search name or GUID...");
+    searchEdit->setPlaceholderText("搜索名称或 GUID...");
     searchEdit->setClearButtonEnabled(true);
 
-    refreshButton = new QPushButton("Refresh", this);
-    unhideButton = new QPushButton("Unhide Selected", this);
-    hideButton = new QPushButton("Hide Selected", this);
-    copyGuidButton = new QPushButton("Copy GUIDs", this);
+    refreshButton = new QPushButton("刷新", this);
+    unhideButton = new QPushButton("取消隐藏所选项", this);
+    hideButton = new QPushButton("隐藏所选项", this);
+    copyGuidButton = new QPushButton("复制 GUID", this);
 
     unhideButton->setEnabled(false);
     hideButton->setEnabled(false);
     copyGuidButton->setEnabled(false);
 
-    onlyHiddenCheckBox = new QCheckBox("Only hidden", this);
+    onlyHiddenCheckBox = new QCheckBox("仅显示隐藏项", this);
     onlyHiddenCheckBox->setChecked(true);
 
     statusLabel = new QLabel(this);
@@ -70,8 +71,8 @@ void MainWindow::setupUi() {
     tree = new QTreeWidget(this);
     tree->setColumnCount(3);
     tree->setHeaderLabels({
-        "Name",
-        "Hidden",
+        "名称",
+        "隐藏",
         "GUID"
     });
 
@@ -234,26 +235,27 @@ void MainWindow::showStartupSafetyNotice() {
 
     QMessageBox box(this);
     box.setIcon(QMessageBox::Warning);
-    box.setWindowTitle("Safety Notice");
+    box.setWindowTitle("安全提示");
 
     box.setText(
-        "PowerPlanRevealer can modify Windows power setting visibility."
+        "PowerPlanRevealer 可以修改 Windows 电源高级设置项的隐藏状态。"
     );
 
     box.setInformativeText(
-        "Before using Hide or Unhide, it is recommended to create a system restore point "
-        "or export the related registry keys.\n\n"
-        "Recommended registry path to back up:\n"
+        "在使用“隐藏”或“取消隐藏”功能之前，建议先创建系统还原点，"
+        "或者导出相关注册表项作为备份。\n\n"
+        "建议备份的注册表路径：\n"
         "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Power\\PowerSettings\n\n"
-        "This tool only changes the hide attribute of selected power settings, "
-        "but these are still system-level settings. Please keep a backup before making changes."
+        "本工具只会修改所选电源设置项的 hide attribute，"
+        "不会主动修改电源设置的具体数值。"
+        "不过这些仍然属于系统级设置，修改前请确保你知道自己正在操作的项目。"
     );
 
     box.setStandardButtons(QMessageBox::Ok);
     box.setDefaultButton(QMessageBox::Ok);
 
     auto *dontShowAgain = new QCheckBox(
-        "Don't show this notice again",
+        "不再显示此提示",
         &box
     );
 
@@ -287,11 +289,11 @@ void MainWindow::reloadTree() {
 
         QMessageBox::critical(
             this,
-            "Error",
-            QString("Failed to enumerate power settings. Error code: %1").arg(rc)
+            "错误",
+            QString("枚举电源设置失败。错误代码：%1").arg(rc)
         );
 
-        statusLabel->setText("Failed");
+        statusLabel->setText("失败");
         return;
     }
 
@@ -331,7 +333,7 @@ void MainWindow::addPowerSettingItem(const PowerSettingItem *item) {
     const QString settingName = QString::fromWCharArray(item->setting_name);
     const QString subgroupGuid = QString::fromWCharArray(item->subgroup_guid_text);
     const QString settingGuid = QString::fromWCharArray(item->setting_guid_text);
-    const QString hiddenText = item->hidden ? "Yes" : "No";
+    const QString hiddenText = item->hidden ? "是" : "否";
 
     QTreeWidgetItem *subgroupItem = subgroupItems.value(subgroupGuid, nullptr);
 
@@ -423,14 +425,14 @@ void MainWindow::applyFilter() {
 
     if (hasQuery) {
         statusLabel->setText(
-            QString("%1 / %2 item(s), %3 subgroup(s)")
+            QString("显示 %1 / %2 项，%3 个分类")
                 .arg(visibleSettingCount)
                 .arg(totalSettingCount)
                 .arg(visibleSubgroupCount)
         );
     } else {
         statusLabel->setText(
-            QString("%1 item(s), %2 subgroup(s)")
+            QString("%1 项，%2 个分类")
                 .arg(totalSettingCount)
                 .arg(tree->topLevelItemCount())
         );
@@ -478,8 +480,8 @@ void MainWindow::setSelectedSettingHidden(bool hidden) {
     if (item == nullptr) {
         QMessageBox::information(
             this,
-            "No setting selected",
-            "Please select a power setting item first."
+            "未选择设置项",
+            "请先选择一个具体的电源设置项。"
         );
         return;
     }
@@ -489,10 +491,10 @@ void MainWindow::setSelectedSettingHidden(bool hidden) {
     if (currentlyHidden == hidden) {
         QMessageBox::information(
             this,
-            "No change needed",
+            "无需修改",
             hidden
-                ? "This setting is already hidden."
-                : "This setting is already visible."
+                ? "这个设置项当前已经是隐藏状态。"
+                : "这个设置项当前已经是可见状态。"
         );
         return;
     }
@@ -501,28 +503,30 @@ void MainWindow::setSelectedSettingHidden(bool hidden) {
     const QString subgroupGuidText = item->data(ColumnName, RoleSubgroupGuid).toString();
     const QString settingGuidText = item->data(ColumnName, RoleSettingGuid).toString();
 
-    const QString currentStateText = currentlyHidden ? "Hidden" : "Visible";
-    const QString targetStateText = hidden ? "Hidden" : "Visible";
+    const QString actionText = hidden ? "隐藏" : "取消隐藏";
+    const QString currentStateText = currentlyHidden ? "隐藏" : "可见";
+    const QString targetStateText = hidden ? "隐藏" : "可见";
 
     const QMessageBox::StandardButton answer = QMessageBox::question(
         this,
-        hidden ? "Confirm Hide Setting" : "Confirm Unhide Setting",
+        hidden ? "确认隐藏设置项" : "确认取消隐藏设置项",
         QString(
-            "Please confirm this change:\n\n"
-            "Setting:\n%1\n\n"
-            "Current state: %2\n"
-            "Target state : %3\n\n"
-            "Subgroup GUID:\n%4\n\n"
-            "Setting GUID:\n%5\n\n"
-            "It is recommended to back up the registry or create a restore point "
-            "before modifying system power settings."
-        ).arg(
-            settingName,
-            currentStateText,
-            targetStateText,
-            subgroupGuidText,
-            settingGuidText
-        ),
+            "请确认以下修改：\n\n"
+            "操作：%1\n\n"
+            "设置项：\n%2\n\n"
+            "当前状态：%3\n"
+            "目标状态：%4\n\n"
+            "Subgroup GUID：\n%5\n\n"
+            "Setting GUID：\n%6\n\n"
+            "建议在修改前先创建系统还原点，或者备份以下注册表路径：\n"
+            "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Power\\PowerSettings"
+        )
+            .arg(actionText)
+            .arg(settingName)
+            .arg(currentStateText)
+            .arg(targetStateText)
+            .arg(subgroupGuidText)
+            .arg(settingGuidText),
         QMessageBox::Yes | QMessageBox::No,
         QMessageBox::No
     );
@@ -540,8 +544,8 @@ void MainWindow::setSelectedSettingHidden(bool hidden) {
     if (!parse_guid_text(subgroupWide.c_str(), &subgroupGuid)) {
         QMessageBox::critical(
             this,
-            "Invalid GUID",
-            QString("Invalid subgroup GUID:\n%1").arg(subgroupGuidText)
+            "无效 GUID",
+            QString("Subgroup GUID 无效：\n%1").arg(subgroupGuidText)
         );
         return;
     }
@@ -549,8 +553,8 @@ void MainWindow::setSelectedSettingHidden(bool hidden) {
     if (!parse_guid_text(settingWide.c_str(), &settingGuid)) {
         QMessageBox::critical(
             this,
-            "Invalid GUID",
-            QString("Invalid setting GUID:\n%1").arg(settingGuidText)
+            "无效 GUID",
+            QString("Setting GUID 无效：\n%1").arg(settingGuidText)
         );
         return;
     }
@@ -570,15 +574,15 @@ void MainWindow::setSelectedSettingHidden(bool hidden) {
     );
 
     if (rc != ERROR_SUCCESS) {
-        QString message = QString("Operation failed. Error code: %1").arg(rc);
+        QString message = QString("操作失败。错误代码：%1").arg(rc);
 
         if (rc == ERROR_ACCESS_DENIED) {
-            message += "\n\nAccess denied. Please make sure the GUI is running as administrator.";
+            message += "\n\n访问被拒绝。请确认 GUI 已经以管理员身份运行。";
         }
 
         QMessageBox::critical(
             this,
-            "Operation failed",
+            "操作失败",
             message
         );
 
@@ -590,33 +594,38 @@ void MainWindow::setSelectedSettingHidden(bool hidden) {
     if (refreshRc != ERROR_SUCCESS) {
         QMessageBox::warning(
             this,
-            "Refresh active scheme failed",
-            QString("The setting was changed, but refreshing the active power scheme failed. Error code: %1")
+            "刷新当前电源计划失败",
+            QString("设置项已经修改成功，但刷新当前电源计划失败。错误代码：%1")
                 .arg(refreshRc)
         );
     }
 
     QMessageBox::information(
         this,
-        "Done",
+        "完成",
         QString(
             "%1\n\n"
-            "Setting:\n%2\n\n"
-            "Before attributes: 0x%3\n"
-            "After attributes : 0x%4"
-        ).arg(
-            hidden ? "The setting has been hidden." : "The setting has been unhidden.",
-            settingName,
-            QString::number(beforeAttributes, 16).toUpper().rightJustified(8, '0'),
-            QString::number(afterAttributes, 16).toUpper().rightJustified(8, '0')
+            "设置项：\n%2\n\n"
+            "修改前 attributes：0x%3\n"
+            "修改后 attributes：0x%4\n\n"
+            "%5"
         )
-    );
-
-    statusLabel->setText(
-        hidden ? "Setting hidden" : "Setting unhidden"
+            .arg(hidden ? "设置项已经隐藏。" : "设置项已经取消隐藏。")
+            .arg(settingName)
+            .arg(QString::number(beforeAttributes, 16).toUpper().rightJustified(8, '0'))
+            .arg(QString::number(afterAttributes, 16).toUpper().rightJustified(8, '0'))
+            .arg(
+                onlyHiddenCheckBox->isChecked() && !hidden
+                    ? "注意：当前启用了“仅显示隐藏项”，这个设置项取消隐藏后会从列表中消失。"
+                    : ""
+            )
     );
 
     reloadTree();
+
+    statusLabel->setText(
+        hidden ? "设置项已隐藏" : "设置项已取消隐藏"
+    );
 }
 
 void MainWindow::copySelectedGuids() {
@@ -625,8 +634,8 @@ void MainWindow::copySelectedGuids() {
     if (item == nullptr) {
         QMessageBox::information(
             this,
-            "No setting selected",
-            "Please select a power setting item first."
+            "未选择设置项",
+            "请先选择一个具体的电源设置项。"
         );
         return;
     }
@@ -639,5 +648,5 @@ void MainWindow::copySelectedGuids() {
 
     QApplication::clipboard()->setText(text);
 
-    statusLabel->setText("GUIDs copied");
+    statusLabel->setText("GUID 已复制");
 }
