@@ -74,7 +74,6 @@ void MainWindow::setupUi() {
     searchEdit->setObjectName("SearchEdit");
     searchEdit->setPlaceholderText("搜索名称或 GUID...");
     searchEdit->setClearButtonEnabled(true);
-    searchEdit->setMinimumHeight(36);
 
     refreshButton = new QPushButton("刷新", this);
     unhideButton = new QPushButton("取消隐藏所选项", this);
@@ -94,7 +93,6 @@ void MainWindow::setupUi() {
     };
 
     for (QPushButton *button : actionButtons) {
-        button->setMinimumHeight(36);
         button->setCursor(Qt::PointingHandCursor);
     }
 
@@ -135,7 +133,6 @@ void MainWindow::setupUi() {
     tree->setAlternatingRowColors(true);
     tree->setUniformRowHeights(true);
     tree->setIndentation(22);
-    tree->setMinimumHeight(420);
 
     tree->setSelectionBehavior(QAbstractItemView::SelectRows);
     tree->setSelectionMode(QAbstractItemView::SingleSelection);
@@ -192,7 +189,7 @@ void MainWindow::setupUi() {
         }
 
         QLineEdit#SearchEdit {
-            padding: 0 12px;
+            padding: 7px 12px;
             border: 1px solid #cfd8e3;
             border-radius: 8px;
             background: #f9fafb;
@@ -205,7 +202,7 @@ void MainWindow::setupUi() {
         }
 
         QPushButton {
-            padding: 0 13px;
+            padding: 7px 13px;
             border: 1px solid #cbd5e1;
             border-radius: 8px;
             background: #ffffff;
