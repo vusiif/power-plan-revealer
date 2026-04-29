@@ -14,9 +14,11 @@
 
 static void print_usage(void) {
     wprintf(L"Usage:\n");
-    wprintf(L"  power_settings_tool.exe list\n");
-    wprintf(L"  power_settings_tool.exe hidden\n");
-    wprintf(L"  power_settings_tool.exe unhide-all\n");
+    wprintf(L"  power_settings_tool.exe list        列出所有电源计划项目\n");
+    wprintf(L"  power_settings_tool.exe hidden      列出所有隐藏的电源计划项目\n");
+    wprintf(L"  power_settings_tool.exe hide        隐藏单个项目\n");
+    wprintf(L"  power_settings_tool.exe unhide      取消隐藏单个项目\n");
+    wprintf(L"  power_settings_tool.exe unhide-all  取消隐藏所有项目(慎用)\n");
 }
 
 static int parse_guid_arg(const wchar_t *text, GUID *out) {
