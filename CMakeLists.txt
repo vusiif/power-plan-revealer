@@ -46,6 +46,9 @@ find_package(Qt6 REQUIRED COMPONENTS Widgets)
 add_executable(power_plan_revealer_gui
         src/gui/main.cpp
         src/gui/mainwindow.cpp
+        src/gui/mainwindow_ui.cpp
+        src/gui/mainwindow_tree.cpp
+        src/gui/mainwindow_actions.cpp
         src/gui/mainwindow.h
 )
 
