@@ -14,23 +14,48 @@
 
 static void print_usage(void) {
     wprintf(L"Usage:\n");
-    wprintf(L"  power_settings_tool.exe list        列出所有电源计划项目\n");
-    wprintf(L"  power_settings_tool.exe hidden      列出所有隐藏的电源计划项目\n");
-    wprintf(L"  power_settings_tool.exe hide        隐藏单个项目\n");
-    wprintf(L"  power_settings_tool.exe unhide      取消隐藏单个项目\n");
-    wprintf(L"  power_settings_tool.exe unhide-all  取消隐藏所有项目(慎用)\n");
+    wprintf(L"  power_settings_tool.exe list\n");
+    wprintf(L"      列出所有电源计划项目\n\n");
+
+    wprintf(L"  power_settings_tool.exe hidden\n");
+    wprintf(L"      列出所有隐藏的电源计划项目\n\n");
+
+    wprintf(L"  power_settings_tool.exe unhide <subgroup-guid> <setting-guid>\n");
+    wprintf(L"      取消隐藏单个项目\n\n");
+
+    wprintf(L"  power_settings_tool.exe hide <subgroup-guid> <setting-guid>\n");
+    wprintf(L"      隐藏单个项目\n\n");
+
+    wprintf(L"  power_settings_tool.exe unhide-all\n");
+    wprintf(L"      取消隐藏所有项目，慎用\n\n");
+
+    wprintf(L"      注意，所有guid可以带{}，也可以不带{}\n");
 }
+
 
 static int parse_guid_arg(const wchar_t *text, GUID *out) {
     HRESULT hr = CLSIDFromString(text, out);
 
-    if (FAILED(hr)) {
-        fwprintf(stderr, L"Invalid GUID: %s\n", text);
-        return 0;
+    if (SUCCEEDED(hr)) {
+        return 1;
     }
 
-    return 1;
+    wchar_t wrapped[64];
+
+    if (text[0] != L'{') {
+        swprintf_s(wrapped, 64, L"{%s}", text);
+
+        hr = CLSIDFromString(wrapped, out);
+
+        if (SUCCEEDED(hr)) {
+            return 1;
+        }
+    }
+
+    fwprintf(stderr, L"Invalid GUID: %s\n", text);
+    return 0;
 }
+
 
 static void refresh_active_scheme(void) {
     GUID *scheme = NULL;
@@ -77,13 +102,45 @@ static int command_unhide_or_hide(int hide, const wchar_t *subgroup_text, const 
     return 0;
 }
 
+static int is_console_handle(DWORD std_handle_id) {
+    HANDLE h = GetStdHandle(std_handle_id);
+    DWORD mode = 0;
+
+    if (h == NULL || h == INVALID_HANDLE_VALUE) {
+        return 0;
+    }
+
+    return GetConsoleMode(h, &mode) != 0;
+}
+
+static void setup_output_encoding(void) {
+    setlocale(LC_ALL, "");
+
+    if (is_console_handle(STD_OUTPUT_HANDLE)) {
+        /*
+           控制台：让 wprintf 直接走 UTF-16，
+           中文显示最稳。
+        */
+        _setmode(_fileno(stdout), _O_U16TEXT);
+    } else {
+        /*
+           重定向到文件或管道：输出 UTF-8。
+           写 BOM，方便 Notepad / VS Code 自动识别。
+        */
+        _setmode(_fileno(stdout), _O_U8TEXT);
+        fputwc(0xFEFF, stdout);
+    }
+
+    if (is_console_handle(STD_ERROR_HANDLE)) {
+        _setmode(_fileno(stderr), _O_U16TEXT);
+    } else {
+        _setmode(_fileno(stderr), _O_U8TEXT);
+    }
+}
 
 int wmain(int argc, wchar_t **argv) {
     // SetConsoleOutputCP(CP_UTF8);
-    setlocale(LC_ALL, "");
-
-    _setmode(_fileno(stdout), _O_U16TEXT);
-    _setmode(_fileno(stderr), _O_U16TEXT);
+    setup_output_encoding();
 
     if (argc < 2) {
         print_usage();
