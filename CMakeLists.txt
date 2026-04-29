@@ -18,6 +18,7 @@ target_compile_definitions(power_settings_tool PRIVATE
 
 target_link_libraries(power_settings_tool PRIVATE
         PowrProf
+        Ole32
 )
 
 if (MSVC)
