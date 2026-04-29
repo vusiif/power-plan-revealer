@@ -51,6 +51,7 @@ private:
     int totalSettingCount;
 
     void setupUi();
+    void showStartupSafetyNotice();
     void reloadTree();
     void addPowerSettingItem(const PowerSettingItem *item);
     void applyFilter();

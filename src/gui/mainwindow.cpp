@@ -12,6 +12,8 @@
 #include <QAbstractItemView>
 #include <QApplication>
 #include <QClipboard>
+#include <QSettings>
+#include <QFont>
 
 #include <string>
 
@@ -27,6 +29,7 @@ MainWindow::MainWindow(QWidget *parent)
       statusLabel(nullptr),
       totalSettingCount(0) {
     setupUi();
+    showStartupSafetyNotice();
     reloadTree();
 }
 
@@ -212,6 +215,55 @@ void MainWindow::setupUi() {
             updateActionButtons();
         }
     );
+}
+
+void MainWindow::showStartupSafetyNotice() {
+    QSettings settings(
+        "PowerPlanRevealer",
+        "PowerPlanRevealer"
+    );
+
+    const bool skipNotice = settings.value(
+        "safety/skipStartupNotice",
+        false
+    ).toBool();
+
+    if (skipNotice) {
+        return;
+    }
+
+    QMessageBox box(this);
+    box.setIcon(QMessageBox::Warning);
+    box.setWindowTitle("Safety Notice");
+
+    box.setText(
+        "PowerPlanRevealer can modify Windows power setting visibility."
+    );
+
+    box.setInformativeText(
+        "Before using Hide or Unhide, it is recommended to create a system restore point "
+        "or export the related registry keys.\n\n"
+        "Recommended registry path to back up:\n"
+        "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Power\\PowerSettings\n\n"
+        "This tool only changes the hide attribute of selected power settings, "
+        "but these are still system-level settings. Please keep a backup before making changes."
+    );
+
+    box.setStandardButtons(QMessageBox::Ok);
+    box.setDefaultButton(QMessageBox::Ok);
+
+    auto *dontShowAgain = new QCheckBox(
+        "Don't show this notice again",
+        &box
+    );
+
+    box.setCheckBox(dontShowAgain);
+
+    box.exec();
+
+    if (dontShowAgain->isChecked()) {
+        settings.setValue("safety/skipStartupNotice", true);
+    }
 }
 
 void MainWindow::reloadTree() {
@@ -449,16 +501,28 @@ void MainWindow::setSelectedSettingHidden(bool hidden) {
     const QString subgroupGuidText = item->data(ColumnName, RoleSubgroupGuid).toString();
     const QString settingGuidText = item->data(ColumnName, RoleSettingGuid).toString();
 
-    const QString actionText = hidden ? "hide" : "unhide";
+    const QString currentStateText = currentlyHidden ? "Hidden" : "Visible";
+    const QString targetStateText = hidden ? "Hidden" : "Visible";
 
     const QMessageBox::StandardButton answer = QMessageBox::question(
         this,
-        hidden ? "Hide setting" : "Unhide setting",
-        QString("Are you sure you want to %1 this setting?\n\n"
-                "Setting:\n%2\n\n"
-                "Subgroup GUID:\n%3\n\n"
-                "Setting GUID:\n%4")
-            .arg(actionText, settingName, subgroupGuidText, settingGuidText),
+        hidden ? "Confirm Hide Setting" : "Confirm Unhide Setting",
+        QString(
+            "Please confirm this change:\n\n"
+            "Setting:\n%1\n\n"
+            "Current state: %2\n"
+            "Target state : %3\n\n"
+            "Subgroup GUID:\n%4\n\n"
+            "Setting GUID:\n%5\n\n"
+            "It is recommended to back up the registry or create a restore point "
+            "before modifying system power settings."
+        ).arg(
+            settingName,
+            currentStateText,
+            targetStateText,
+            subgroupGuidText,
+            settingGuidText
+        ),
         QMessageBox::Yes | QMessageBox::No,
         QMessageBox::No
     );
@@ -491,9 +555,19 @@ void MainWindow::setSelectedSettingHidden(bool hidden) {
         return;
     }
 
+    const DWORD beforeAttributes = get_setting_attributes(
+        &subgroupGuid,
+        &settingGuid
+    );
+
     const DWORD rc = hidden
         ? hide_setting(&subgroupGuid, &settingGuid)
         : unhide_setting(&subgroupGuid, &settingGuid);
+
+    const DWORD afterAttributes = get_setting_attributes(
+        &subgroupGuid,
+        &settingGuid
+    );
 
     if (rc != ERROR_SUCCESS) {
         QString message = QString("Operation failed. Error code: %1").arg(rc);
@@ -525,7 +599,21 @@ void MainWindow::setSelectedSettingHidden(bool hidden) {
     QMessageBox::information(
         this,
         "Done",
-        hidden ? "The setting has been hidden." : "The setting has been unhidden."
+        QString(
+            "%1\n\n"
+            "Setting:\n%2\n\n"
+            "Before attributes: 0x%3\n"
+            "After attributes : 0x%4"
+        ).arg(
+            hidden ? "The setting has been hidden." : "The setting has been unhidden.",
+            settingName,
+            QString::number(beforeAttributes, 16).toUpper().rightJustified(8, '0'),
+            QString::number(afterAttributes, 16).toUpper().rightJustified(8, '0')
+        )
+    );
+
+    statusLabel->setText(
+        hidden ? "Setting hidden" : "Setting unhidden"
     );
 
     reloadTree();
