@@ -26,9 +26,9 @@ if (MSVC)
             /utf-8
     )
 
-    # 让程序启动时请求管理员权限。
-    # 如果你只想 list 时不弹 UAC，可以先注释掉这一行。
-    target_link_options(power_settings_tool PRIVATE
-            "SHELL:/MANIFESTUAC:level='requireAdministrator' uiAccess='false'"
-    )
+#    # 让程序启动时请求管理员权限。
+#    # 如果你只想 list 时不弹 UAC，可以先注释掉这一行。
+#    target_link_options(power_settings_tool PRIVATE
+#            "/MANIFESTUAC:\"level='requireAdministrator' uiAccess='false'\""
+#    )
 endif()

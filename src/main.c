@@ -3,6 +3,9 @@
 #include <windows.h>
 #include <stdio.h>
 #include <wchar.h>
+#include <fcntl.h>
+#include <io.h>
+#include <locale.h>
 
 static void print_usage(void) {
     wprintf(L"Usage:\n");
@@ -12,7 +15,11 @@ static void print_usage(void) {
 }
 
 int wmain(int argc, wchar_t **argv) {
-    SetConsoleOutputCP(CP_UTF8);
+    // SetConsoleOutputCP(CP_UTF8);
+    setlocale(LC_ALL, "");
+
+    _setmode(_fileno(stdout), _O_U16TEXT);
+    _setmode(_fileno(stderr), _O_U16TEXT);
 
     if (argc < 2) {
         print_usage();
