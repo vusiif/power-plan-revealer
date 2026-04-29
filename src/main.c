@@ -1,13 +1,15 @@
 #include "power_enum.h"
+#include "power_attr.h"
 
 #include <windows.h>
+#include <powrprof.h>
+#include <objbase.h>
+
 #include <stdio.h>
 #include <wchar.h>
 #include <fcntl.h>
 #include <io.h>
 #include <locale.h>
-#include "power_attr.h"
-#include <objbase.h>
 
 
 static void print_usage(void) {
