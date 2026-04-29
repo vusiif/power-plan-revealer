@@ -15,6 +15,7 @@
 #include <QSettings>
 #include <QCheckBox>
 #include <QFont>
+#include <QFrame>
 
 #include <string>
 
@@ -39,26 +40,77 @@ void MainWindow::setupUi() {
 
     auto *central = new QWidget(this);
     auto *mainLayout = new QVBoxLayout(central);
+    mainLayout->setContentsMargins(18, 18, 18, 18);
+    mainLayout->setSpacing(12);
 
-    auto *topLayout = new QHBoxLayout();
+    auto *heroFrame = new QFrame(this);
+    heroFrame->setObjectName("HeroFrame");
+
+    auto *heroLayout = new QVBoxLayout(heroFrame);
+    heroLayout->setContentsMargins(18, 14, 18, 14);
+    heroLayout->setSpacing(4);
+
+    auto *heroTitle = new QLabel("PowerPlanRevealer", this);
+    heroTitle->setObjectName("HeroTitle");
+
+    auto *heroSubtitle = new QLabel(
+        "查看、搜索并管理 Windows 电源计划高级设置的隐藏状态",
+        this
+    );
+    heroSubtitle->setObjectName("HeroSubtitle");
+    heroSubtitle->setWordWrap(true);
+
+    heroLayout->addWidget(heroTitle);
+    heroLayout->addWidget(heroSubtitle);
+
+    auto *toolbarFrame = new QFrame(this);
+    toolbarFrame->setObjectName("ToolbarFrame");
+
+    auto *topLayout = new QHBoxLayout(toolbarFrame);
+    topLayout->setContentsMargins(12, 10, 12, 10);
+    topLayout->setSpacing(8);
 
     searchEdit = new QLineEdit(this);
+    searchEdit->setObjectName("SearchEdit");
     searchEdit->setPlaceholderText("搜索名称或 GUID...");
     searchEdit->setClearButtonEnabled(true);
+    searchEdit->setMinimumHeight(36);
 
     refreshButton = new QPushButton("刷新", this);
     unhideButton = new QPushButton("取消隐藏所选项", this);
     hideButton = new QPushButton("隐藏所选项", this);
     copyGuidButton = new QPushButton("复制 GUID", this);
 
+    refreshButton->setObjectName("SecondaryButton");
+    unhideButton->setObjectName("PrimaryButton");
+    hideButton->setObjectName("DangerButton");
+    copyGuidButton->setObjectName("SecondaryButton");
+
+    QPushButton *actionButtons[] = {
+        refreshButton,
+        unhideButton,
+        hideButton,
+        copyGuidButton
+    };
+
+    for (QPushButton *button : actionButtons) {
+        button->setMinimumHeight(36);
+        button->setCursor(Qt::PointingHandCursor);
+    }
+
     unhideButton->setEnabled(false);
     hideButton->setEnabled(false);
     copyGuidButton->setEnabled(false);
 
     onlyHiddenCheckBox = new QCheckBox("仅显示隐藏项", this);
+    onlyHiddenCheckBox->setObjectName("OnlyHiddenCheckBox");
     onlyHiddenCheckBox->setChecked(true);
+    onlyHiddenCheckBox->setCursor(Qt::PointingHandCursor);
 
     statusLabel = new QLabel(this);
+    statusLabel->setObjectName("StatusBadge");
+    statusLabel->setMinimumWidth(118);
+    statusLabel->setAlignment(Qt::AlignCenter);
 
     topLayout->addWidget(searchEdit, 1);
     topLayout->addWidget(refreshButton);
@@ -69,6 +121,7 @@ void MainWindow::setupUi() {
     topLayout->addWidget(statusLabel);
 
     tree = new QTreeWidget(this);
+    tree->setObjectName("PowerTree");
     tree->setColumnCount(3);
     tree->setHeaderLabels({
         "名称",
@@ -82,79 +135,220 @@ void MainWindow::setupUi() {
     tree->setAlternatingRowColors(true);
     tree->setUniformRowHeights(true);
     tree->setIndentation(22);
+    tree->setMinimumHeight(420);
 
     tree->setSelectionBehavior(QAbstractItemView::SelectRows);
     tree->setSelectionMode(QAbstractItemView::SingleSelection);
     tree->setEditTriggers(QAbstractItemView::NoEditTriggers);
 
     tree->header()->setStretchLastSection(false);
+    tree->header()->setDefaultAlignment(Qt::AlignLeft | Qt::AlignVCenter);
     tree->header()->setSectionResizeMode(ColumnName, QHeaderView::Stretch);
     tree->header()->setSectionResizeMode(ColumnHidden, QHeaderView::ResizeToContents);
     tree->header()->setSectionResizeMode(ColumnGuid, QHeaderView::ResizeToContents);
 
-    mainLayout->addLayout(topLayout);
-    mainLayout->addWidget(tree);
+    mainLayout->addWidget(heroFrame);
+    mainLayout->addWidget(toolbarFrame);
+    mainLayout->addWidget(tree, 1);
 
     setCentralWidget(central);
 
     setStyleSheet(R"(
         QMainWindow {
-            background: #f6f7f9;
+            background: #eef2f7;
         }
 
-        QLineEdit {
-            padding: 6px 10px;
-            border: 1px solid #cfd4dc;
-            border-radius: 6px;
-            background: white;
+        QWidget {
+            font-family: "Microsoft YaHei UI", "Segoe UI";
+            font-size: 13px;
+            color: #111827;
         }
 
-        QPushButton {
-            padding: 6px 12px;
-            border: 1px solid #c5cbd3;
-            border-radius: 6px;
+        QFrame#HeroFrame {
+            background: qlineargradient(
+                x1: 0, y1: 0,
+                x2: 1, y2: 1,
+                stop: 0 #ffffff,
+                stop: 1 #e8f0ff
+            );
+            border: 1px solid #d7dee8;
+            border-radius: 14px;
+        }
+
+        QLabel#HeroTitle {
+            font-size: 22px;
+            font-weight: 700;
+            color: #111827;
+        }
+
+        QLabel#HeroSubtitle {
+            color: #4b5563;
+        }
+
+        QFrame#ToolbarFrame {
+            background: #ffffff;
+            border: 1px solid #d8dee9;
+            border-radius: 12px;
+        }
+
+        QLineEdit#SearchEdit {
+            padding: 0 12px;
+            border: 1px solid #cfd8e3;
+            border-radius: 8px;
+            background: #f9fafb;
+            selection-background-color: #bfdbfe;
+        }
+
+        QLineEdit#SearchEdit:focus {
+            border: 1px solid #3b82f6;
             background: #ffffff;
         }
 
-        QPushButton:hover {
-            background: #eef3ff;
+        QPushButton {
+            padding: 0 13px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            background: #ffffff;
+            color: #1f2937;
+            font-weight: 500;
         }
 
-        QPushButton:disabled {
+        QPushButton:hover {
+            background: #f8fafc;
+            border-color: #94a3b8;
+        }
+
+        QPushButton#PrimaryButton {
+            color: #ffffff;
+            background: #2563eb;
+            border-color: #1d4ed8;
+        }
+
+        QPushButton#PrimaryButton:hover {
+            background: #1d4ed8;
+            border-color: #1e40af;
+        }
+
+        QPushButton#DangerButton {
+            color: #ffffff;
+            background: #dc2626;
+            border-color: #b91c1c;
+        }
+
+        QPushButton#DangerButton:hover {
+            background: #b91c1c;
+            border-color: #991b1b;
+        }
+
+        QPushButton:disabled,
+        QPushButton#PrimaryButton:disabled,
+        QPushButton#DangerButton:disabled {
             color: #9ca3af;
             background: #f3f4f6;
+            border-color: #d1d5db;
         }
 
-        QCheckBox {
-            spacing: 6px;
+        QCheckBox#OnlyHiddenCheckBox {
+            spacing: 7px;
+            color: #374151;
+            font-weight: 500;
         }
 
-        QTreeWidget {
-            background: white;
-            border: 1px solid #d8dde5;
-            border-radius: 8px;
+        QCheckBox#OnlyHiddenCheckBox::indicator {
+            width: 16px;
+            height: 16px;
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            background: #ffffff;
+        }
+
+        QCheckBox#OnlyHiddenCheckBox::indicator:checked {
+            background: #2563eb;
+            border-color: #1d4ed8;
+        }
+
+        QLabel#StatusBadge {
+            padding: 5px 10px;
+            border: 1px solid #d8dee9;
+            border-radius: 999px;
+            background: #f8fafc;
+            color: #475569;
+            font-weight: 500;
+        }
+
+        QTreeWidget#PowerTree {
+            background: #ffffff;
+            border: 1px solid #d8dee9;
+            border-radius: 12px;
             alternate-background-color: #f8fafc;
+            outline: 0;
         }
 
-        QTreeWidget::item {
-            padding: 4px;
+        QTreeWidget#PowerTree::item {
+            min-height: 28px;
+            padding: 4px 6px;
+            border-bottom: 1px solid #f1f5f9;
         }
 
-        QTreeWidget::item:selected {
+        QTreeWidget#PowerTree::item:hover {
+            background: #eff6ff;
+        }
+
+        QTreeWidget#PowerTree::item:selected {
             background: #dbeafe;
             color: #111827;
         }
 
         QHeaderView::section {
-            padding: 6px;
-            background: #eef1f5;
+            padding: 8px 10px;
+            background: #f1f5f9;
+            color: #334155;
             border: none;
-            border-right: 1px solid #d8dde5;
-            font-weight: 600;
+            border-right: 1px solid #e2e8f0;
+            border-bottom: 1px solid #d8dee9;
+            font-weight: 700;
         }
 
-        QLabel {
-            color: #4b5563;
+        QScrollBar:vertical {
+            background: #f8fafc;
+            width: 12px;
+            margin: 2px;
+        }
+
+        QScrollBar::handle:vertical {
+            background: #cbd5e1;
+            border-radius: 6px;
+            min-height: 28px;
+        }
+
+        QScrollBar::handle:vertical:hover {
+            background: #94a3b8;
+        }
+
+        QScrollBar::add-line:vertical,
+        QScrollBar::sub-line:vertical {
+            height: 0;
+        }
+
+        QScrollBar:horizontal {
+            background: #f8fafc;
+            height: 12px;
+            margin: 2px;
+        }
+
+        QScrollBar::handle:horizontal {
+            background: #cbd5e1;
+            border-radius: 6px;
+            min-width: 28px;
+        }
+
+        QScrollBar::handle:horizontal:hover {
+            background: #94a3b8;
+        }
+
+        QScrollBar::add-line:horizontal,
+        QScrollBar::sub-line:horizontal {
+            width: 0;
         }
     )");
 
@@ -508,28 +702,30 @@ void MainWindow::setSelectedSettingHidden(bool hidden) {
     const QString targetStateText = hidden ? "隐藏" : "可见";
 
     const QMessageBox::StandardButton answer = QMessageBox::question(
-        this,
-        hidden ? "确认隐藏设置项" : "确认取消隐藏设置项",
-        QString(
-            "请确认以下修改：\n\n"
-            "操作：%1\n\n"
-            "设置项：\n%2\n\n"
-            "当前状态：%3\n"
-            "目标状态：%4\n\n"
-            "Subgroup GUID：\n%5\n\n"
-            "Setting GUID：\n%6\n\n"
-            "建议在修改前先创建系统还原点，或者备份以下注册表路径：\n"
-            "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Power\\PowerSettings"
-        )
-            .arg(actionText)
-            .arg(settingName)
-            .arg(currentStateText)
-            .arg(targetStateText)
-            .arg(subgroupGuidText)
-            .arg(settingGuidText),
-        QMessageBox::Yes | QMessageBox::No,
-        QMessageBox::No
-    );
+    this,
+    hidden ? "确认隐藏设置项" : "确认取消隐藏设置项",
+    QString(
+        "请确认以下修改：\n\n"
+        "操作：%1\n\n"
+        "设置项：\n%2\n\n"
+        "当前状态：%3\n"
+        "目标状态：%4\n\n"
+        "Subgroup GUID：\n%5\n\n"
+        "Setting GUID：\n%6\n\n"
+        "建议在修改前先创建系统还原点，或者备份以下注册表路径：\n"
+        "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Power\\PowerSettings"
+    ).arg(
+        actionText,
+        settingName,
+        currentStateText,
+        targetStateText,
+        subgroupGuidText,
+        settingGuidText
+    ),
+    QMessageBox::Yes | QMessageBox::No,
+    QMessageBox::No
+);
+
 
     if (answer != QMessageBox::Yes) {
         return;
@@ -600,6 +796,21 @@ void MainWindow::setSelectedSettingHidden(bool hidden) {
         );
     }
 
+    const QString beforeAttributesText = QString::number(
+    beforeAttributes,
+    16
+).toUpper().rightJustified(8, '0');
+
+    const QString afterAttributesText = QString::number(
+        afterAttributes,
+        16
+    ).toUpper().rightJustified(8, '0');
+
+    const QString hiddenFilterNotice =
+        onlyHiddenCheckBox->isChecked() && !hidden
+            ? "注意：当前启用了“仅显示隐藏项”，这个设置项取消隐藏后会从列表中消失。"
+            : "";
+
     QMessageBox::information(
         this,
         "完成",
@@ -609,17 +820,15 @@ void MainWindow::setSelectedSettingHidden(bool hidden) {
             "修改前 attributes：0x%3\n"
             "修改后 attributes：0x%4\n\n"
             "%5"
+        ).arg(
+            hidden ? "设置项已经隐藏。" : "设置项已经取消隐藏。",
+            settingName,
+            beforeAttributesText,
+            afterAttributesText,
+            hiddenFilterNotice
         )
-            .arg(hidden ? "设置项已经隐藏。" : "设置项已经取消隐藏。")
-            .arg(settingName)
-            .arg(QString::number(beforeAttributes, 16).toUpper().rightJustified(8, '0'))
-            .arg(QString::number(afterAttributes, 16).toUpper().rightJustified(8, '0'))
-            .arg(
-                onlyHiddenCheckBox->isChecked() && !hidden
-                    ? "注意：当前启用了“仅显示隐藏项”，这个设置项取消隐藏后会从列表中消失。"
-                    : ""
-            )
     );
+
 
     reloadTree();
 
