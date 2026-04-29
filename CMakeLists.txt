@@ -1,12 +1,14 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(PowerPlanRevealer C CXX)
+project(PowerPlanRevealer LANGUAGES C CXX)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+set(CMAKE_AUTOMOC ON)
 
 add_library(ppr_core STATIC
         src/core/power_core.c
@@ -39,6 +41,23 @@ set_target_properties(power_settings_tool PROPERTIES
         OUTPUT_NAME "power-plan-revealer-cli"
 )
 
+find_package(Qt6 REQUIRED COMPONENTS Widgets)
+
+add_executable(power_plan_revealer_gui
+        src/gui/main.cpp
+        src/gui/mainwindow.cpp
+        src/gui/mainwindow.h
+)
+
+target_link_libraries(power_plan_revealer_gui PRIVATE
+        Qt6::Widgets
+        ppr_core
+)
+
+set_target_properties(power_plan_revealer_gui PROPERTIES
+        OUTPUT_NAME "power-plan-revealer"
+)
+
 if (MSVC)
     target_compile_options(ppr_core PRIVATE
             /W4
@@ -50,6 +69,11 @@ if (MSVC)
             /utf-8
     )
 
+    target_compile_options(power_plan_revealer_gui PRIVATE
+            /W4
+            /utf-8
+    )
+
     set_property(TARGET ppr_core PROPERTY
             MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
     )
@@ -57,4 +81,15 @@ if (MSVC)
     set_property(TARGET power_settings_tool PROPERTY
             MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
     )
+
+    set_property(TARGET power_plan_revealer_gui PROPERTY
+            MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
+    )
+
+    # 只读 GUI 阶段先不要开 UAC。
+    # 后面加 Hide / Unhide 写操作时，再打开。
+    #
+    # target_link_options(power_plan_revealer_gui PRIVATE
+    #         "/MANIFESTUAC:\"level='requireAdministrator' uiAccess='false'\""
+    # )
 endif()
