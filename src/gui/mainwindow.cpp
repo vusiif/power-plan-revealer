@@ -1,5 +1,7 @@
 #include "mainwindow.h"
 
+#include "power_attr.h"
+
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QWidget>
@@ -8,12 +10,19 @@
 #include <QString>
 #include <QTreeWidgetItem>
 #include <QAbstractItemView>
+#include <QApplication>
+#include <QClipboard>
+
+#include <string>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),
       tree(nullptr),
       searchEdit(nullptr),
       refreshButton(nullptr),
+      unhideButton(nullptr),
+      hideButton(nullptr),
+      copyGuidButton(nullptr),
       onlyHiddenCheckBox(nullptr),
       statusLabel(nullptr),
       totalSettingCount(0) {
@@ -34,6 +43,13 @@ void MainWindow::setupUi() {
     searchEdit->setClearButtonEnabled(true);
 
     refreshButton = new QPushButton("Refresh", this);
+    unhideButton = new QPushButton("Unhide Selected", this);
+    hideButton = new QPushButton("Hide Selected", this);
+    copyGuidButton = new QPushButton("Copy GUIDs", this);
+
+    unhideButton->setEnabled(false);
+    hideButton->setEnabled(false);
+    copyGuidButton->setEnabled(false);
 
     onlyHiddenCheckBox = new QCheckBox("Only hidden", this);
     onlyHiddenCheckBox->setChecked(true);
@@ -42,6 +58,9 @@ void MainWindow::setupUi() {
 
     topLayout->addWidget(searchEdit, 1);
     topLayout->addWidget(refreshButton);
+    topLayout->addWidget(unhideButton);
+    topLayout->addWidget(hideButton);
+    topLayout->addWidget(copyGuidButton);
     topLayout->addWidget(onlyHiddenCheckBox);
     topLayout->addWidget(statusLabel);
 
@@ -97,6 +116,11 @@ void MainWindow::setupUi() {
             background: #eef3ff;
         }
 
+        QPushButton:disabled {
+            color: #9ca3af;
+            background: #f3f4f6;
+        }
+
         QCheckBox {
             spacing: 6px;
         }
@@ -138,6 +162,31 @@ void MainWindow::setupUi() {
     );
 
     connect(
+        unhideButton,
+        &QPushButton::clicked,
+        this,
+        [this]() {
+            setSelectedSettingHidden(false);
+        }
+    );
+
+    connect(
+        hideButton,
+        &QPushButton::clicked,
+        this,
+        [this]() {
+            setSelectedSettingHidden(true);
+        }
+    );
+
+    connect(
+        copyGuidButton,
+        &QPushButton::clicked,
+        this,
+        &MainWindow::copySelectedGuids
+    );
+
+    connect(
         onlyHiddenCheckBox,
         &QCheckBox::checkStateChanged,
         this,
@@ -154,6 +203,15 @@ void MainWindow::setupUi() {
             applyFilter();
         }
     );
+
+    connect(
+        tree,
+        &QTreeWidget::currentItemChanged,
+        this,
+        [this](QTreeWidgetItem *, QTreeWidgetItem *) {
+            updateActionButtons();
+        }
+    );
 }
 
 void MainWindow::reloadTree() {
@@ -161,6 +219,8 @@ void MainWindow::reloadTree() {
     tree->clear();
     subgroupItems.clear();
     totalSettingCount = 0;
+
+    updateActionButtons();
 
     const int hiddenOnly = onlyHiddenCheckBox->isChecked() ? 1 : 0;
 
@@ -192,6 +252,7 @@ void MainWindow::reloadTree() {
     }
 
     applyFilter();
+    updateActionButtons();
 
     tree->setUpdatesEnabled(true);
 }
@@ -229,8 +290,10 @@ void MainWindow::addPowerSettingItem(const PowerSettingItem *item) {
         subgroupItem->setText(ColumnHidden, "");
         subgroupItem->setText(ColumnGuid, subgroupGuid);
 
-        subgroupItem->setData(ColumnName, Qt::UserRole, subgroupGuid);
-        subgroupItem->setData(ColumnName, Qt::UserRole + 1, "subgroup");
+        subgroupItem->setData(ColumnName, RoleSubgroupGuid, subgroupGuid);
+        subgroupItem->setData(ColumnName, RoleSettingGuid, "");
+        subgroupItem->setData(ColumnName, RoleHidden, 0);
+        subgroupItem->setData(ColumnName, RoleItemType, ItemTypeSubgroup);
 
         subgroupItem->setToolTip(ColumnName, subgroupName);
         subgroupItem->setToolTip(ColumnGuid, subgroupGuid);
@@ -248,9 +311,10 @@ void MainWindow::addPowerSettingItem(const PowerSettingItem *item) {
     settingItem->setText(ColumnHidden, hiddenText);
     settingItem->setText(ColumnGuid, settingGuid);
 
-    settingItem->setData(ColumnName, Qt::UserRole, subgroupGuid);
-    settingItem->setData(ColumnName, Qt::UserRole + 1, settingGuid);
-    settingItem->setData(ColumnName, Qt::UserRole + 2, item->hidden ? 1 : 0);
+    settingItem->setData(ColumnName, RoleSubgroupGuid, subgroupGuid);
+    settingItem->setData(ColumnName, RoleSettingGuid, settingGuid);
+    settingItem->setData(ColumnName, RoleHidden, item->hidden ? 1 : 0);
+    settingItem->setData(ColumnName, RoleItemType, ItemTypeSetting);
 
     settingItem->setToolTip(ColumnName, settingName);
     settingItem->setToolTip(ColumnGuid, settingGuid);
@@ -260,7 +324,6 @@ void MainWindow::addPowerSettingItem(const PowerSettingItem *item) {
 
 void MainWindow::applyFilter() {
     const QString query = searchEdit->text().trimmed();
-
     const bool hasQuery = !query.isEmpty();
 
     int visibleSubgroupCount = 0;
@@ -320,8 +383,173 @@ void MainWindow::applyFilter() {
                 .arg(tree->topLevelItemCount())
         );
     }
+
+    updateActionButtons();
 }
 
-void MainWindow::updateStatus() {
-    applyFilter();
+QTreeWidgetItem *MainWindow::selectedSettingItem() const {
+    QTreeWidgetItem *item = tree->currentItem();
+
+    if (item == nullptr) {
+        return nullptr;
+    }
+
+    const int itemType = item->data(ColumnName, RoleItemType).toInt();
+
+    if (itemType != ItemTypeSetting) {
+        return nullptr;
+    }
+
+    return item;
+}
+
+void MainWindow::updateActionButtons() {
+    QTreeWidgetItem *item = selectedSettingItem();
+
+    if (item == nullptr) {
+        unhideButton->setEnabled(false);
+        hideButton->setEnabled(false);
+        copyGuidButton->setEnabled(false);
+        return;
+    }
+
+    const bool hidden = item->data(ColumnName, RoleHidden).toInt() != 0;
+
+    unhideButton->setEnabled(hidden);
+    hideButton->setEnabled(!hidden);
+    copyGuidButton->setEnabled(true);
+}
+
+void MainWindow::setSelectedSettingHidden(bool hidden) {
+    QTreeWidgetItem *item = selectedSettingItem();
+
+    if (item == nullptr) {
+        QMessageBox::information(
+            this,
+            "No setting selected",
+            "Please select a power setting item first."
+        );
+        return;
+    }
+
+    const bool currentlyHidden = item->data(ColumnName, RoleHidden).toInt() != 0;
+
+    if (currentlyHidden == hidden) {
+        QMessageBox::information(
+            this,
+            "No change needed",
+            hidden
+                ? "This setting is already hidden."
+                : "This setting is already visible."
+        );
+        return;
+    }
+
+    const QString settingName = item->text(ColumnName);
+    const QString subgroupGuidText = item->data(ColumnName, RoleSubgroupGuid).toString();
+    const QString settingGuidText = item->data(ColumnName, RoleSettingGuid).toString();
+
+    const QString actionText = hidden ? "hide" : "unhide";
+
+    const QMessageBox::StandardButton answer = QMessageBox::question(
+        this,
+        hidden ? "Hide setting" : "Unhide setting",
+        QString("Are you sure you want to %1 this setting?\n\n"
+                "Setting:\n%2\n\n"
+                "Subgroup GUID:\n%3\n\n"
+                "Setting GUID:\n%4")
+            .arg(actionText, settingName, subgroupGuidText, settingGuidText),
+        QMessageBox::Yes | QMessageBox::No,
+        QMessageBox::No
+    );
+
+    if (answer != QMessageBox::Yes) {
+        return;
+    }
+
+    GUID subgroupGuid;
+    GUID settingGuid;
+
+    const std::wstring subgroupWide = subgroupGuidText.toStdWString();
+    const std::wstring settingWide = settingGuidText.toStdWString();
+
+    if (!parse_guid_text(subgroupWide.c_str(), &subgroupGuid)) {
+        QMessageBox::critical(
+            this,
+            "Invalid GUID",
+            QString("Invalid subgroup GUID:\n%1").arg(subgroupGuidText)
+        );
+        return;
+    }
+
+    if (!parse_guid_text(settingWide.c_str(), &settingGuid)) {
+        QMessageBox::critical(
+            this,
+            "Invalid GUID",
+            QString("Invalid setting GUID:\n%1").arg(settingGuidText)
+        );
+        return;
+    }
+
+    const DWORD rc = hidden
+        ? hide_setting(&subgroupGuid, &settingGuid)
+        : unhide_setting(&subgroupGuid, &settingGuid);
+
+    if (rc != ERROR_SUCCESS) {
+        QString message = QString("Operation failed. Error code: %1").arg(rc);
+
+        if (rc == ERROR_ACCESS_DENIED) {
+            message += "\n\nAccess denied. Please make sure the GUI is running as administrator.";
+        }
+
+        QMessageBox::critical(
+            this,
+            "Operation failed",
+            message
+        );
+
+        return;
+    }
+
+    const DWORD refreshRc = refresh_active_scheme();
+
+    if (refreshRc != ERROR_SUCCESS) {
+        QMessageBox::warning(
+            this,
+            "Refresh active scheme failed",
+            QString("The setting was changed, but refreshing the active power scheme failed. Error code: %1")
+                .arg(refreshRc)
+        );
+    }
+
+    QMessageBox::information(
+        this,
+        "Done",
+        hidden ? "The setting has been hidden." : "The setting has been unhidden."
+    );
+
+    reloadTree();
+}
+
+void MainWindow::copySelectedGuids() {
+    QTreeWidgetItem *item = selectedSettingItem();
+
+    if (item == nullptr) {
+        QMessageBox::information(
+            this,
+            "No setting selected",
+            "Please select a power setting item first."
+        );
+        return;
+    }
+
+    const QString subgroupGuidText = item->data(ColumnName, RoleSubgroupGuid).toString();
+    const QString settingGuidText = item->data(ColumnName, RoleSettingGuid).toString();
+
+    const QString text = QString("Subgroup GUID: %1\nSetting GUID: %2")
+        .arg(subgroupGuidText, settingGuidText);
+
+    QApplication::clipboard()->setText(text);
+
+    statusLabel->setText("GUIDs copied");
 }

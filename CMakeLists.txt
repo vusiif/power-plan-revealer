@@ -56,6 +56,7 @@ target_link_libraries(power_plan_revealer_gui PRIVATE
 
 set_target_properties(power_plan_revealer_gui PROPERTIES
         OUTPUT_NAME "power-plan-revealer"
+        WIN32_EXECUTABLE ON
 )
 
 if (MSVC)
@@ -75,21 +76,18 @@ if (MSVC)
     )
 
     set_property(TARGET ppr_core PROPERTY
-            MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
+            MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL"
     )
 
     set_property(TARGET power_settings_tool PROPERTY
-            MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
+            MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL"
     )
 
     set_property(TARGET power_plan_revealer_gui PROPERTY
-            MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
+            MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL"
     )
 
-    # 只读 GUI 阶段先不要开 UAC。
-    # 后面加 Hide / Unhide 写操作时，再打开。
-    #
-    # target_link_options(power_plan_revealer_gui PRIVATE
-    #         "/MANIFESTUAC:\"level='requireAdministrator' uiAccess='false'\""
-    # )
+    target_link_options(power_plan_revealer_gui PRIVATE
+            "/MANIFESTUAC:level='requireAdministrator' uiAccess='false'"
+    )
 endif()
