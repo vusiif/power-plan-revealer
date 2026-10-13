@@ -24,6 +24,9 @@
 #include <QComboBox>
 #include <QStyleHints>
 #include <QGuiApplication>
+#include <QPalette>
+#include <QColor>
+#include <QStyle>
 
 #include <string>
 
@@ -62,10 +65,30 @@ MainWindow::MainWindow(QWidget *parent)
 }
 
 void MainWindow::loadStyleSheet(bool isDark) {
+    if (isDark) {
+        QPalette darkPalette;
+        darkPalette.setColor(QPalette::Window, QColor(15, 23, 42));
+        darkPalette.setColor(QPalette::WindowText, QColor(248, 250, 252));
+        darkPalette.setColor(QPalette::Base, QColor(30, 41, 59));
+        darkPalette.setColor(QPalette::AlternateBase, QColor(22, 32, 50));
+        darkPalette.setColor(QPalette::ToolTipBase, QColor(15, 23, 42));
+        darkPalette.setColor(QPalette::ToolTipText, QColor(248, 250, 252));
+        darkPalette.setColor(QPalette::Text, QColor(248, 250, 252));
+        darkPalette.setColor(QPalette::Button, QColor(51, 65, 85));
+        darkPalette.setColor(QPalette::ButtonText, QColor(248, 250, 252));
+        darkPalette.setColor(QPalette::BrightText, Qt::red);
+        darkPalette.setColor(QPalette::Link, QColor(96, 165, 250));
+        darkPalette.setColor(QPalette::Highlight, QColor(37, 99, 235));
+        darkPalette.setColor(QPalette::HighlightedText, Qt::white);
+        qApp->setPalette(darkPalette);
+    } else {
+        qApp->setPalette(qApp->style()->standardPalette());
+    }
+
     const QString resourcePath = isDark ? ":/style-dark.qss" : ":/style-light.qss";
     QFile file(resourcePath);
     if (file.open(QFile::ReadOnly | QFile::Text)) {
-        setStyleSheet(QString::fromUtf8(file.readAll()));
+        qApp->setStyleSheet(QString::fromUtf8(file.readAll()));
     }
 }
 

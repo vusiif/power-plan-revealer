@@ -1,5 +1,24 @@
 QMainWindow {
-    background: #0f172a;
+    background-color: #0f172a;
+}
+
+QDialog, QMessageBox {
+    background-color: #1e293b;
+    color: #f8fafc;
+}
+
+QDialog QLabel, QMessageBox QLabel {
+    color: #f8fafc;
+    background-color: transparent;
+}
+
+QDialog QCheckBox, QMessageBox QCheckBox {
+    color: #e2e8f0;
+    background-color: transparent;
+}
+
+QDialogButtonBox {
+    background-color: transparent;
 }
 
 QWidget {
@@ -139,13 +158,13 @@ QComboBox QAbstractItemView {
     padding: 4px;
 }
 
-QCheckBox#OnlyHiddenCheckBox {
+QCheckBox {
     spacing: 7px;
     color: #cbd5e1;
     font-weight: 500;
 }
 
-QCheckBox#OnlyHiddenCheckBox::indicator {
+QCheckBox::indicator {
     width: 16px;
     height: 16px;
     border: 1px solid #475569;
@@ -153,7 +172,7 @@ QCheckBox#OnlyHiddenCheckBox::indicator {
     background: #0f172a;
 }
 
-QCheckBox#OnlyHiddenCheckBox::indicator:checked {
+QCheckBox::indicator:checked {
     background: #2563eb;
     border-color: #1d4ed8;
 }
