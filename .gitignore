@@ -9,9 +9,11 @@ out/
 *.suo
 
 # Temporary files
+dist/
 *.tmp
 *.log
 *.reg
 PowerSettings_backup*.reg
 PowerPlanRevealer-*.zip
+PowerPlanRevealer-*.exe
 SHA256SUMS.txt
