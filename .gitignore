@@ -1,0 +1,17 @@
+# Build directories
+build/
+cmake-build-*/
+out/
+
+# IDE & Editor files
+.vs/
+*.user
+*.suo
+
+# Temporary files
+*.tmp
+*.log
+*.reg
+PowerSettings_backup*.reg
+PowerPlanRevealer-*.zip
+SHA256SUMS.txt

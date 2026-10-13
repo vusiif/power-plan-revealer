@@ -8,8 +8,6 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(CMAKE_AUTOMOC ON)
-
 add_library(ppr_core STATIC
         src/core/power_core.c
         src/core/power_attr.c
@@ -27,6 +25,8 @@ target_compile_definitions(ppr_core PUBLIC
 target_link_libraries(ppr_core PUBLIC
         PowrProf
         Ole32
+        Advapi32
+        Shell32
 )
 
 add_executable(power_settings_tool
@@ -47,6 +47,7 @@ add_executable(power_plan_revealer_gui
         src/gui/main.cpp
         src/gui/mainwindow.cpp
         src/gui/mainwindow.h
+        src/gui/resources/resources.qrc
 )
 
 target_link_libraries(power_plan_revealer_gui PRIVATE
@@ -57,6 +58,8 @@ target_link_libraries(power_plan_revealer_gui PRIVATE
 set_target_properties(power_plan_revealer_gui PROPERTIES
         OUTPUT_NAME "power-plan-revealer"
         WIN32_EXECUTABLE ON
+        AUTOMOC ON
+        AUTORCC ON
 )
 
 if (MSVC)
@@ -85,6 +88,10 @@ if (MSVC)
 
     set_property(TARGET power_plan_revealer_gui PROPERTY
             MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL"
+    )
+
+    target_link_options(power_settings_tool PRIVATE
+            "/MANIFESTUAC:level='asInvoker' uiAccess='false'"
     )
 
     target_link_options(power_plan_revealer_gui PRIVATE

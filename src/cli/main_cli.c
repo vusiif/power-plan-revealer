@@ -15,6 +15,7 @@ typedef struct PrintContext {
 } PrintContext;
 
 static void print_usage(void) {
+    wprintf(L"PowerPlanRevealer CLI\n");
     wprintf(L"Usage:\n");
     wprintf(L"  power-plan-revealer-cli.exe list\n");
     wprintf(L"      列出所有电源计划项目\n\n");
@@ -23,12 +24,21 @@ static void print_usage(void) {
     wprintf(L"      列出所有隐藏的电源计划项目\n\n");
 
     wprintf(L"  power-plan-revealer-cli.exe unhide <subgroup-guid> <setting-guid>\n");
-    wprintf(L"      取消隐藏单个项目\n\n");
+    wprintf(L"      取消隐藏单个项目 (需要管理员权限)\n\n");
 
     wprintf(L"  power-plan-revealer-cli.exe hide <subgroup-guid> <setting-guid>\n");
-    wprintf(L"      隐藏单个项目\n\n");
+    wprintf(L"      隐藏单个项目 (需要管理员权限)\n\n");
 
-    wprintf(L"      注意，所有 guid 可以带 {}，也可以不带 {}\n");
+    wprintf(L"  power-plan-revealer-cli.exe schemes\n");
+    wprintf(L"      列出所有已安装的电源方案 (查看当前活动方案与可用方案)\n\n");
+
+    wprintf(L"  power-plan-revealer-cli.exe set-scheme <scheme-guid>\n");
+    wprintf(L"      切换当前活动的电源方案\n\n");
+
+    wprintf(L"  power-plan-revealer-cli.exe backup [output-file.reg]\n");
+    wprintf(L"      备份电源设置注册表至 .reg 文件 (默认保存为 PowerSettings_backup.reg)\n\n");
+
+    wprintf(L"      注意：GUID 可带 {} 或不带 {}\n");
 }
 
 static int is_console_handle(DWORD std_handle_id) {
@@ -88,6 +98,15 @@ static int print_setting_callback(
     wprintf(L"  - %s\n", item->setting_name);
     wprintf(L"    setting guid: %s\n", item->setting_guid_text);
     wprintf(L"    hidden      : %s\n", item->hidden ? L"yes" : L"no");
+    if (item->has_ac_value) {
+        wprintf(L"    AC value    : 0x%08lX (%lu)\n", item->ac_value, item->ac_value);
+    }
+    if (item->has_dc_value) {
+        wprintf(L"    DC value    : 0x%08lX (%lu)\n", item->dc_value, item->dc_value);
+    }
+    if (item->description[0] != L'\0') {
+        wprintf(L"    description : %s\n", item->description);
+    }
     wprintf(L"\n");
 
     return 0;
@@ -156,7 +175,10 @@ static int command_unhide_or_hide(
     DWORD after = get_setting_attributes(&subgroup, &setting);
 
     if (rc != ERROR_SUCCESS) {
-        fwprintf(stderr, L"Failed, error: %lu\n", rc);
+        fwprintf(stderr, L"操作失败，错误代码: %lu\n", rc);
+        if (rc == ERROR_ACCESS_DENIED) {
+            fwprintf(stderr, L"提示：拒绝访问。请以管理员身份运行此终端！\n");
+        }
         return 1;
     }
 
@@ -173,10 +195,84 @@ static int command_unhide_or_hide(
     return 0;
 }
 
+static int command_backup(const wchar_t *path) {
+    wchar_t target[MAX_PATH];
+    if (path != NULL && path[0] != L'\0') {
+        wcscpy_s(target, MAX_PATH, path);
+    } else {
+        wcscpy_s(target, MAX_PATH, L"PowerSettings_backup.reg");
+    }
+
+    wprintf(L"正在导出注册表备份至: %s ...\n", target);
+    int rc = backup_power_settings_registry(target);
+    if (rc != 0) {
+        fwprintf(stderr, L"备份失败，错误代码: %d\n", rc);
+        if (rc == ERROR_ACCESS_DENIED) {
+            fwprintf(stderr, L"提示：拒绝访问。请以管理员身份运行此终端！\n");
+        }
+        return 1;
+    }
+
+    wprintf(L"备份成功！已保存至: %s\n", target);
+    return 0;
+}
+
+static int print_scheme_callback(const PowerSchemeItem *item, void *user_data) {
+    (void)user_data;
+    wprintf(
+        L"%s [%s]\n",
+        item->is_active ? L"*" : L" ",
+        item->scheme_name
+    );
+    wprintf(L"    GUID  : %s\n", item->scheme_guid_text);
+    wprintf(L"    Active: %s\n\n", item->is_active ? L"yes" : L"no");
+    return 0;
+}
+
+static int command_schemes(void) {
+    wprintf(L"系统已安装的电源计划方案 (* 表示当前活动方案)：\n\n");
+    int rc = enumerate_power_schemes(print_scheme_callback, NULL);
+    if (rc != ERROR_SUCCESS) {
+        fwprintf(stderr, L"枚举电源方案失败: %d\n", rc);
+        return 1;
+    }
+    return 0;
+}
+
+static int command_set_scheme(const wchar_t *guid_text) {
+    GUID scheme;
+    if (!parse_guid_text(guid_text, &scheme)) {
+        fwprintf(stderr, L"无效的方案 GUID: %s\n", guid_text);
+        return 1;
+    }
+
+    DWORD rc = set_active_scheme_by_guid(&scheme);
+    if (rc != ERROR_SUCCESS) {
+        fwprintf(stderr, L"切换电源方案失败，错误代码: %lu\n", rc);
+        if (rc == ERROR_ACCESS_DENIED) {
+            fwprintf(stderr, L"提示：拒绝访问。请以管理员身份运行此终端！\n");
+        }
+        return 1;
+    }
+
+    wchar_t scheme_name[PPR_NAME_CCH];
+    get_active_scheme_name(scheme_name, PPR_NAME_CCH);
+    wprintf(L"已成功激活电源方案: %s\n", scheme_name);
+    return 0;
+}
+
 int wmain(int argc, wchar_t **argv) {
     setup_output_encoding();
 
     if (argc < 2) {
+        print_usage();
+        return 0;
+    }
+
+    if (wcscmp(argv[1], L"-h") == 0 ||
+        wcscmp(argv[1], L"--help") == 0 ||
+        wcscmp(argv[1], L"help") == 0 ||
+        wcscmp(argv[1], L"/?") == 0) {
         print_usage();
         return 0;
     }
@@ -187,6 +283,24 @@ int wmain(int argc, wchar_t **argv) {
 
     if (wcscmp(argv[1], L"hidden") == 0) {
         return command_list(1);
+    }
+
+    if (wcscmp(argv[1], L"schemes") == 0 || wcscmp(argv[1], L"plans") == 0) {
+        return command_schemes();
+    }
+
+    if (wcscmp(argv[1], L"set-scheme") == 0 || wcscmp(argv[1], L"set-plan") == 0) {
+        if (argc != 3) {
+            wprintf(L"Usage:\n");
+            wprintf(L"  power-plan-revealer-cli.exe set-scheme <scheme-guid>\n");
+            return 1;
+        }
+
+        return command_set_scheme(argv[2]);
+    }
+
+    if (wcscmp(argv[1], L"backup") == 0) {
+        return command_backup(argc >= 3 ? argv[2] : NULL);
     }
 
     if (wcscmp(argv[1], L"unhide") == 0) {

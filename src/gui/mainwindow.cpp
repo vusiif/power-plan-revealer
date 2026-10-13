@@ -16,6 +16,14 @@
 #include <QCheckBox>
 #include <QFont>
 #include <QFrame>
+#include <QFile>
+#include <QMenu>
+#include <QAction>
+#include <QFileDialog>
+#include <QDateTime>
+#include <QComboBox>
+#include <QStyleHints>
+#include <QGuiApplication>
 
 #include <string>
 
@@ -27,12 +35,38 @@ MainWindow::MainWindow(QWidget *parent)
       unhideButton(nullptr),
       hideButton(nullptr),
       copyGuidButton(nullptr),
+      backupButton(nullptr),
       onlyHiddenCheckBox(nullptr),
+      schemeComboBox(nullptr),
+      switchSchemeButton(nullptr),
+      activeSchemeLabel(nullptr),
       statusLabel(nullptr),
       totalSettingCount(0) {
     setupUi();
+
+    const bool isDark = (QGuiApplication::styleHints()->colorScheme() == Qt::ColorScheme::Dark);
+    loadStyleSheet(isDark);
+
+    connect(
+        QGuiApplication::styleHints(),
+        &QStyleHints::colorSchemeChanged,
+        this,
+        [this](Qt::ColorScheme scheme) {
+            loadStyleSheet(scheme == Qt::ColorScheme::Dark);
+        }
+    );
+
     showStartupSafetyNotice();
+    loadSchemes();
     reloadTree();
+}
+
+void MainWindow::loadStyleSheet(bool isDark) {
+    const QString resourcePath = isDark ? ":/style-dark.qss" : ":/style-light.qss";
+    QFile file(resourcePath);
+    if (file.open(QFile::ReadOnly | QFile::Text)) {
+        setStyleSheet(QString::fromUtf8(file.readAll()));
+    }
 }
 
 void MainWindow::setupUi() {
@@ -48,7 +82,7 @@ void MainWindow::setupUi() {
 
     auto *heroLayout = new QVBoxLayout(heroFrame);
     heroLayout->setContentsMargins(18, 14, 18, 14);
-    heroLayout->setSpacing(4);
+    heroLayout->setSpacing(8);
 
     auto *heroTitle = new QLabel("PowerPlanRevealer", this);
     heroTitle->setObjectName("HeroTitle");
@@ -60,8 +94,33 @@ void MainWindow::setupUi() {
     heroSubtitle->setObjectName("HeroSubtitle");
     heroSubtitle->setWordWrap(true);
 
+    auto *schemeLayout = new QHBoxLayout();
+    schemeLayout->setSpacing(8);
+
+    auto *schemeTitle = new QLabel("电源计划方案：", this);
+    schemeTitle->setObjectName("SchemeTitle");
+
+    schemeComboBox = new QComboBox(this);
+    schemeComboBox->setObjectName("SchemeComboBox");
+    schemeComboBox->setCursor(Qt::PointingHandCursor);
+
+    switchSchemeButton = new QPushButton("设为当前活动方案", this);
+    switchSchemeButton->setObjectName("PrimaryButton");
+    switchSchemeButton->setCursor(Qt::PointingHandCursor);
+    switchSchemeButton->setToolTip("将下拉框中选中的电源计划激活为系统当前运行的方案");
+
+    activeSchemeLabel = new QLabel(this);
+    activeSchemeLabel->setObjectName("ActiveSchemeLabel");
+
+    schemeLayout->addWidget(schemeTitle);
+    schemeLayout->addWidget(schemeComboBox);
+    schemeLayout->addWidget(switchSchemeButton);
+    schemeLayout->addWidget(activeSchemeLabel);
+    schemeLayout->addStretch(1);
+
     heroLayout->addWidget(heroTitle);
     heroLayout->addWidget(heroSubtitle);
+    heroLayout->addLayout(schemeLayout);
 
     auto *toolbarFrame = new QFrame(this);
     toolbarFrame->setObjectName("ToolbarFrame");
@@ -72,24 +131,29 @@ void MainWindow::setupUi() {
 
     searchEdit = new QLineEdit(this);
     searchEdit->setObjectName("SearchEdit");
-    searchEdit->setPlaceholderText("搜索名称或 GUID...");
+    searchEdit->setPlaceholderText("搜索名称、GUID 或说明关键字...");
     searchEdit->setClearButtonEnabled(true);
 
     refreshButton = new QPushButton("刷新", this);
     unhideButton = new QPushButton("取消隐藏所选项", this);
     hideButton = new QPushButton("隐藏所选项", this);
     copyGuidButton = new QPushButton("复制 GUID", this);
+    backupButton = new QPushButton("备份注册表", this);
 
     refreshButton->setObjectName("SecondaryButton");
     unhideButton->setObjectName("PrimaryButton");
     hideButton->setObjectName("DangerButton");
     copyGuidButton->setObjectName("SecondaryButton");
+    backupButton->setObjectName("SecondaryButton");
+
+    backupButton->setToolTip("导出当前系统电源设置注册表项为 .reg 备份文件");
 
     QPushButton *actionButtons[] = {
         refreshButton,
         unhideButton,
         hideButton,
-        copyGuidButton
+        copyGuidButton,
+        backupButton
     };
 
     for (QPushButton *button : actionButtons) {
@@ -115,6 +179,7 @@ void MainWindow::setupUi() {
     topLayout->addWidget(unhideButton);
     topLayout->addWidget(hideButton);
     topLayout->addWidget(copyGuidButton);
+    topLayout->addWidget(backupButton);
     topLayout->addWidget(onlyHiddenCheckBox);
     topLayout->addWidget(statusLabel);
 
@@ -137,6 +202,7 @@ void MainWindow::setupUi() {
     tree->setSelectionBehavior(QAbstractItemView::SelectRows);
     tree->setSelectionMode(QAbstractItemView::SingleSelection);
     tree->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    tree->setContextMenuPolicy(Qt::CustomContextMenu);
 
     tree->header()->setStretchLastSection(false);
     tree->header()->setDefaultAlignment(Qt::AlignLeft | Qt::AlignVCenter);
@@ -150,210 +216,21 @@ void MainWindow::setupUi() {
 
     setCentralWidget(central);
 
-    setStyleSheet(R"(
-        QMainWindow {
-            background: #eef2f7;
-        }
-
-        QWidget {
-            font-family: "Microsoft YaHei UI", "Segoe UI";
-            font-size: 13px;
-            color: #111827;
-        }
-
-        QFrame#HeroFrame {
-            background: qlineargradient(
-                x1: 0, y1: 0,
-                x2: 1, y2: 1,
-                stop: 0 #ffffff,
-                stop: 1 #e8f0ff
-            );
-            border: 1px solid #d7dee8;
-            border-radius: 14px;
-        }
-
-        QLabel#HeroTitle {
-            font-size: 22px;
-            font-weight: 700;
-            color: #111827;
-        }
-
-        QLabel#HeroSubtitle {
-            color: #4b5563;
-        }
-
-        QFrame#ToolbarFrame {
-            background: #ffffff;
-            border: 1px solid #d8dee9;
-            border-radius: 12px;
-        }
-
-        QLineEdit#SearchEdit {
-            padding: 7px 12px;
-            border: 1px solid #cfd8e3;
-            border-radius: 8px;
-            background: #f9fafb;
-            selection-background-color: #bfdbfe;
-        }
-
-        QLineEdit#SearchEdit:focus {
-            border: 1px solid #3b82f6;
-            background: #ffffff;
-        }
-
-        QPushButton {
-            padding: 7px 13px;
-            border: 1px solid #cbd5e1;
-            border-radius: 8px;
-            background: #ffffff;
-            color: #1f2937;
-            font-weight: 500;
-        }
-
-        QPushButton:hover {
-            background: #f8fafc;
-            border-color: #94a3b8;
-        }
-
-        QPushButton#PrimaryButton {
-            color: #ffffff;
-            background: #2563eb;
-            border-color: #1d4ed8;
-        }
-
-        QPushButton#PrimaryButton:hover {
-            background: #1d4ed8;
-            border-color: #1e40af;
-        }
-
-        QPushButton#DangerButton {
-            color: #ffffff;
-            background: #dc2626;
-            border-color: #b91c1c;
-        }
-
-        QPushButton#DangerButton:hover {
-            background: #b91c1c;
-            border-color: #991b1b;
-        }
-
-        QPushButton:disabled,
-        QPushButton#PrimaryButton:disabled,
-        QPushButton#DangerButton:disabled {
-            color: #9ca3af;
-            background: #f3f4f6;
-            border-color: #d1d5db;
-        }
-
-        QCheckBox#OnlyHiddenCheckBox {
-            spacing: 7px;
-            color: #374151;
-            font-weight: 500;
-        }
-
-        QCheckBox#OnlyHiddenCheckBox::indicator {
-            width: 16px;
-            height: 16px;
-            border: 1px solid #cbd5e1;
-            border-radius: 4px;
-            background: #ffffff;
-        }
-
-        QCheckBox#OnlyHiddenCheckBox::indicator:checked {
-            background: #2563eb;
-            border-color: #1d4ed8;
-        }
-
-        QLabel#StatusBadge {
-            padding: 5px 10px;
-            border: 1px solid #d8dee9;
-            border-radius: 999px;
-            background: #f8fafc;
-            color: #475569;
-            font-weight: 500;
-        }
-
-        QTreeWidget#PowerTree {
-            background: #ffffff;
-            border: 1px solid #d8dee9;
-            border-radius: 12px;
-            alternate-background-color: #f8fafc;
-            outline: 0;
-        }
-
-        QTreeWidget#PowerTree::item {
-            min-height: 28px;
-            padding: 4px 6px;
-            border-bottom: 1px solid #f1f5f9;
-        }
-
-        QTreeWidget#PowerTree::item:hover {
-            background: #eff6ff;
-        }
-
-        QTreeWidget#PowerTree::item:selected {
-            background: #dbeafe;
-            color: #111827;
-        }
-
-        QHeaderView::section {
-            padding: 8px 10px;
-            background: #f1f5f9;
-            color: #334155;
-            border: none;
-            border-right: 1px solid #e2e8f0;
-            border-bottom: 1px solid #d8dee9;
-            font-weight: 700;
-        }
-
-        QScrollBar:vertical {
-            background: #f8fafc;
-            width: 12px;
-            margin: 2px;
-        }
-
-        QScrollBar::handle:vertical {
-            background: #cbd5e1;
-            border-radius: 6px;
-            min-height: 28px;
-        }
-
-        QScrollBar::handle:vertical:hover {
-            background: #94a3b8;
-        }
-
-        QScrollBar::add-line:vertical,
-        QScrollBar::sub-line:vertical {
-            height: 0;
-        }
-
-        QScrollBar:horizontal {
-            background: #f8fafc;
-            height: 12px;
-            margin: 2px;
-        }
-
-        QScrollBar::handle:horizontal {
-            background: #cbd5e1;
-            border-radius: 6px;
-            min-width: 28px;
-        }
-
-        QScrollBar::handle:horizontal:hover {
-            background: #94a3b8;
-        }
-
-        QScrollBar::add-line:horizontal,
-        QScrollBar::sub-line:horizontal {
-            width: 0;
-        }
-    )");
+    connect(
+        switchSchemeButton,
+        &QPushButton::clicked,
+        this,
+        &MainWindow::switchActiveScheme
+    );
 
     connect(
         refreshButton,
         &QPushButton::clicked,
         this,
-        &MainWindow::reloadTree
+        [this]() {
+            loadSchemes();
+            reloadTree();
+        }
     );
 
     connect(
@@ -382,6 +259,13 @@ void MainWindow::setupUi() {
     );
 
     connect(
+        backupButton,
+        &QPushButton::clicked,
+        this,
+        &MainWindow::backupRegistry
+    );
+
+    connect(
         onlyHiddenCheckBox,
         &QCheckBox::checkStateChanged,
         this,
@@ -407,6 +291,89 @@ void MainWindow::setupUi() {
             updateActionButtons();
         }
     );
+
+    connect(
+        tree,
+        &QTreeWidget::customContextMenuRequested,
+        this,
+        &MainWindow::showTreeContextMenu
+    );
+
+    connect(
+        tree,
+        &QTreeWidget::itemDoubleClicked,
+        this,
+        &MainWindow::onTreeItemDoubleClicked
+    );
+}
+
+int MainWindow::schemeEnumerateCallback(
+    const PowerSchemeItem *item,
+    void *userData
+) {
+    auto *window = static_cast<MainWindow *>(userData);
+    if (window == nullptr || item == nullptr) {
+        return 0;
+    }
+
+    const QString name = QString::fromWCharArray(item->scheme_name);
+    const QString guid = QString::fromWCharArray(item->scheme_guid_text);
+    const QString text = item->is_active ? QString("%1 (当前激活)").arg(name) : name;
+
+    window->schemeComboBox->addItem(text, guid);
+    if (item->is_active) {
+        window->schemeComboBox->setCurrentIndex(window->schemeComboBox->count() - 1);
+    }
+
+    return 0;
+}
+
+void MainWindow::loadSchemes() {
+    schemeComboBox->blockSignals(true);
+    schemeComboBox->clear();
+    enumerate_power_schemes(MainWindow::schemeEnumerateCallback, this);
+    schemeComboBox->blockSignals(false);
+    updateActiveSchemeDisplay();
+}
+
+void MainWindow::switchActiveScheme() {
+    const QString guidText = schemeComboBox->currentData().toString();
+    if (guidText.isEmpty()) {
+        return;
+    }
+
+    GUID schemeGuid;
+    const std::wstring wideGuid = guidText.toStdWString();
+    if (!parse_guid_text(wideGuid.c_str(), &schemeGuid)) {
+        QMessageBox::critical(this, "错误", "无效的电源方案 GUID。");
+        return;
+    }
+
+    const DWORD rc = set_active_scheme_by_guid(&schemeGuid);
+    if (rc != ERROR_SUCCESS) {
+        QString msg = QString("切换方案失败，错误代码：%1").arg(rc);
+        if (rc == ERROR_ACCESS_DENIED) {
+            msg += "\n\n访问被拒绝。请确认已以管理员身份运行。";
+        }
+        QMessageBox::critical(this, "操作失败", msg);
+        return;
+    }
+
+    loadSchemes();
+    reloadTree();
+    statusLabel->setText("方案已激活");
+}
+
+void MainWindow::updateActiveSchemeDisplay() {
+    wchar_t schemeName[PPR_NAME_CCH];
+    DWORD rc = get_active_scheme_name(schemeName, PPR_NAME_CCH);
+    if (rc == ERROR_SUCCESS) {
+        activeSchemeLabel->setText(
+            QString("当前激活：%1").arg(QString::fromWCharArray(schemeName))
+        );
+    } else {
+        activeSchemeLabel->setText("当前激活：未知");
+    }
 }
 
 void MainWindow::showStartupSafetyNotice() {
@@ -434,12 +401,12 @@ void MainWindow::showStartupSafetyNotice() {
 
     box.setInformativeText(
         "在使用“隐藏”或“取消隐藏”功能之前，建议先创建系统还原点，"
-        "或者导出相关注册表项作为备份。\n\n"
-        "建议备份的注册表路径：\n"
+        "或点击工具栏上的“备份注册表”导出备份。\n\n"
+        "注册表路径：\n"
         "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Power\\PowerSettings\n\n"
-        "本工具只会修改所选电源设置项的 hide attribute，"
-        "不会主动修改电源设置的具体数值。"
-        "不过这些仍然属于系统级设置，修改前请确保你知道自己正在操作的项目。"
+        "本工具只会修改所选电源设置项的隐藏属性（hide attribute），"
+        "不会擅自修改电源设置的具体数值。"
+        "不过这些设置属于系统级，修改前请确保了解所操作的项目。"
     );
 
     box.setStandardButtons(QMessageBox::Ok);
@@ -465,6 +432,7 @@ void MainWindow::reloadTree() {
     subgroupItems.clear();
     totalSettingCount = 0;
 
+    updateActiveSchemeDisplay();
     updateActionButtons();
 
     const int hiddenOnly = onlyHiddenCheckBox->isChecked() ? 1 : 0;
@@ -524,6 +492,7 @@ void MainWindow::addPowerSettingItem(const PowerSettingItem *item) {
     const QString settingName = QString::fromWCharArray(item->setting_name);
     const QString subgroupGuid = QString::fromWCharArray(item->subgroup_guid_text);
     const QString settingGuid = QString::fromWCharArray(item->setting_guid_text);
+    const QString description = QString::fromWCharArray(item->description);
     const QString hiddenText = item->hidden ? "是" : "否";
 
     QTreeWidgetItem *subgroupItem = subgroupItems.value(subgroupGuid, nullptr);
@@ -560,8 +529,34 @@ void MainWindow::addPowerSettingItem(const PowerSettingItem *item) {
     settingItem->setData(ColumnName, RoleSettingGuid, settingGuid);
     settingItem->setData(ColumnName, RoleHidden, item->hidden ? 1 : 0);
     settingItem->setData(ColumnName, RoleItemType, ItemTypeSetting);
+    settingItem->setData(ColumnName, RoleDescription, description);
+    settingItem->setData(ColumnName, RoleHasAc, item->has_ac_value);
+    settingItem->setData(ColumnName, RoleAcValue, item->has_ac_value ? static_cast<quint32>(item->ac_value) : 0u);
+    settingItem->setData(ColumnName, RoleHasDc, item->has_dc_value);
+    settingItem->setData(ColumnName, RoleDcValue, item->has_dc_value ? static_cast<quint32>(item->dc_value) : 0u);
 
-    settingItem->setToolTip(ColumnName, settingName);
+    QString tooltip = QString("<b>%1</b><br/><b>状态：</b>%2<br/><b>GUID：</b>%3")
+        .arg(settingName, item->hidden ? "隐藏" : "可见", settingGuid);
+
+    if (item->has_ac_value || item->has_dc_value) {
+        tooltip += "<br/><br/><b>当前配置值：</b>";
+        if (item->has_ac_value) {
+            tooltip += QString("<br/>• 接通电源 (AC)：%1 (0x%2)")
+                .arg(item->ac_value)
+                .arg(QString::number(item->ac_value, 16).toUpper().rightJustified(8, '0'));
+        }
+        if (item->has_dc_value) {
+            tooltip += QString("<br/>• 使用电池 (DC)：%1 (0x%2)")
+                .arg(item->dc_value)
+                .arg(QString::number(item->dc_value, 16).toUpper().rightJustified(8, '0'));
+        }
+    }
+
+    if (!description.isEmpty()) {
+        tooltip += QString("<br/><br/><b>说明：</b><br/>%1").arg(description);
+    }
+
+    settingItem->setToolTip(ColumnName, tooltip);
     settingItem->setToolTip(ColumnGuid, settingGuid);
 
     totalSettingCount++;
@@ -586,10 +581,12 @@ void MainWindow::applyFilter() {
         for (int j = 0; j < subgroupItem->childCount(); ++j) {
             QTreeWidgetItem *settingItem = subgroupItem->child(j);
 
+            const QString desc = settingItem->data(ColumnName, RoleDescription).toString();
             const bool settingMatches =
                 settingItem->text(ColumnName).contains(query, Qt::CaseInsensitive) ||
                 settingItem->text(ColumnHidden).contains(query, Qt::CaseInsensitive) ||
-                settingItem->text(ColumnGuid).contains(query, Qt::CaseInsensitive);
+                settingItem->text(ColumnGuid).contains(query, Qt::CaseInsensitive) ||
+                desc.contains(query, Qt::CaseInsensitive);
 
             const bool visible = !hasQuery || subgroupMatches || settingMatches;
 
@@ -699,30 +696,28 @@ void MainWindow::setSelectedSettingHidden(bool hidden) {
     const QString targetStateText = hidden ? "隐藏" : "可见";
 
     const QMessageBox::StandardButton answer = QMessageBox::question(
-    this,
-    hidden ? "确认隐藏设置项" : "确认取消隐藏设置项",
-    QString(
-        "请确认以下修改：\n\n"
-        "操作：%1\n\n"
-        "设置项：\n%2\n\n"
-        "当前状态：%3\n"
-        "目标状态：%4\n\n"
-        "Subgroup GUID：\n%5\n\n"
-        "Setting GUID：\n%6\n\n"
-        "建议在修改前先创建系统还原点，或者备份以下注册表路径：\n"
-        "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Power\\PowerSettings"
-    ).arg(
-        actionText,
-        settingName,
-        currentStateText,
-        targetStateText,
-        subgroupGuidText,
-        settingGuidText
-    ),
-    QMessageBox::Yes | QMessageBox::No,
-    QMessageBox::No
-);
-
+        this,
+        hidden ? "确认隐藏设置项" : "确认取消隐藏设置项",
+        QString(
+            "请确认以下修改：\n\n"
+            "操作：%1\n\n"
+            "设置项：\n%2\n\n"
+            "当前状态：%3\n"
+            "目标状态：%4\n\n"
+            "Subgroup GUID：\n%5\n\n"
+            "Setting GUID：\n%6\n\n"
+            "建议在修改前先创建系统还原点，或使用“备份注册表”导出备份。"
+        ).arg(
+            actionText,
+            settingName,
+            currentStateText,
+            targetStateText,
+            subgroupGuidText,
+            settingGuidText
+        ),
+        QMessageBox::Yes | QMessageBox::No,
+        QMessageBox::No
+    );
 
     if (answer != QMessageBox::Yes) {
         return;
@@ -770,7 +765,7 @@ void MainWindow::setSelectedSettingHidden(bool hidden) {
         QString message = QString("操作失败。错误代码：%1").arg(rc);
 
         if (rc == ERROR_ACCESS_DENIED) {
-            message += "\n\n访问被拒绝。请确认 GUI 已经以管理员身份运行。";
+            message += "\n\n访问被拒绝。请确认程序已以管理员身份运行。";
         }
 
         QMessageBox::critical(
@@ -794,9 +789,9 @@ void MainWindow::setSelectedSettingHidden(bool hidden) {
     }
 
     const QString beforeAttributesText = QString::number(
-    beforeAttributes,
-    16
-).toUpper().rightJustified(8, '0');
+        beforeAttributes,
+        16
+    ).toUpper().rightJustified(8, '0');
 
     const QString afterAttributesText = QString::number(
         afterAttributes,
@@ -826,7 +821,6 @@ void MainWindow::setSelectedSettingHidden(bool hidden) {
         )
     );
 
-
     reloadTree();
 
     statusLabel->setText(
@@ -855,4 +849,126 @@ void MainWindow::copySelectedGuids() {
     QApplication::clipboard()->setText(text);
 
     statusLabel->setText("GUID 已复制");
+}
+
+void MainWindow::copySelectedName() {
+    QTreeWidgetItem *item = selectedSettingItem();
+    if (item != nullptr) {
+        QApplication::clipboard()->setText(item->text(ColumnName));
+        statusLabel->setText("名称已复制");
+    }
+}
+
+void MainWindow::copySelectedRegistryPath() {
+    QTreeWidgetItem *item = selectedSettingItem();
+    if (item != nullptr) {
+        const QString subgroupGuid = item->data(ColumnName, RoleSubgroupGuid).toString();
+        const QString settingGuid = item->data(ColumnName, RoleSettingGuid).toString();
+        const QString regPath = QString(
+            "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Power\\PowerSettings\\%1\\%2"
+        ).arg(subgroupGuid, settingGuid);
+        QApplication::clipboard()->setText(regPath);
+        statusLabel->setText("注册表路径已复制");
+    }
+}
+
+void MainWindow::openSelectedInRegedit() {
+    QTreeWidgetItem *item = selectedSettingItem();
+    if (item == nullptr) {
+        return;
+    }
+    const QString subgroupGuid = item->data(ColumnName, RoleSubgroupGuid).toString();
+    const QString settingGuid = item->data(ColumnName, RoleSettingGuid).toString();
+    open_in_regedit(subgroupGuid.toStdWString().c_str(), settingGuid.toStdWString().c_str());
+    statusLabel->setText("已打开注册表编辑器");
+}
+
+void MainWindow::showTreeContextMenu(const QPoint &pos) {
+    QTreeWidgetItem *item = tree->itemAt(pos);
+    if (item == nullptr) {
+        return;
+    }
+
+    const int itemType = item->data(ColumnName, RoleItemType).toInt();
+    QMenu menu(this);
+
+    if (itemType == ItemTypeSetting) {
+        const bool hidden = item->data(ColumnName, RoleHidden).toInt() != 0;
+        menu.addAction(
+            hidden ? "取消隐藏此项" : "隐藏此项",
+            this,
+            [this, hidden]() {
+                setSelectedSettingHidden(!hidden);
+            }
+        );
+
+        menu.addSeparator();
+
+        menu.addAction("复制设置项名称", this, &MainWindow::copySelectedName);
+        menu.addAction("复制 GUID (Subgroup & Setting)", this, &MainWindow::copySelectedGuids);
+        menu.addAction("复制完整注册表路径", this, &MainWindow::copySelectedRegistryPath);
+        menu.addAction("在注册表编辑器中定位", this, &MainWindow::openSelectedInRegedit);
+    } else if (itemType == ItemTypeSubgroup) {
+        const QString subgroupName = item->text(ColumnName);
+        const QString subgroupGuid = item->data(ColumnName, RoleSubgroupGuid).toString();
+        menu.addAction("复制分类名称", this, [subgroupName]() {
+            QApplication::clipboard()->setText(subgroupName);
+        });
+        menu.addAction("复制 Subgroup GUID", this, [subgroupGuid]() {
+            QApplication::clipboard()->setText(subgroupGuid);
+        });
+        menu.addAction("在注册表编辑器中定位分类", this, [subgroupGuid]() {
+            open_in_regedit(subgroupGuid.toStdWString().c_str(), NULL);
+        });
+    }
+
+    menu.exec(tree->viewport()->mapToGlobal(pos));
+}
+
+void MainWindow::onTreeItemDoubleClicked(QTreeWidgetItem *item, int column) {
+    Q_UNUSED(column);
+    if (item == nullptr) {
+        return;
+    }
+    const int itemType = item->data(ColumnName, RoleItemType).toInt();
+    if (itemType == ItemTypeSetting) {
+        const bool hidden = item->data(ColumnName, RoleHidden).toInt() != 0;
+        setSelectedSettingHidden(!hidden);
+    }
+}
+
+void MainWindow::backupRegistry() {
+    const QString defaultFileName = QString("PowerSettings_backup_%1.reg")
+        .arg(QDateTime::currentDateTime().toString("yyyyMMdd_hhmmss"));
+
+    const QString filePath = QFileDialog::getSaveFileName(
+        this,
+        "导出电源设置注册表备份",
+        defaultFileName,
+        "注册表脚本 (*.reg)"
+    );
+
+    if (filePath.isEmpty()) {
+        return;
+    }
+
+    const int rc = backup_power_settings_registry(filePath.toStdWString().c_str());
+    if (rc == 0) {
+        QMessageBox::information(
+            this,
+            "备份成功",
+            QString("电源设置注册表已成功导出备份至：\n%1").arg(filePath)
+        );
+        statusLabel->setText("注册表已备份");
+    } else {
+        QString message = QString("导出注册表备份失败。错误代码：%1").arg(rc);
+        if (rc == ERROR_ACCESS_DENIED) {
+            message += "\n\n访问被拒绝。请确认程序已具备管理员权限。";
+        }
+        QMessageBox::critical(
+            this,
+            "备份失败",
+            message
+        );
+    }
 }

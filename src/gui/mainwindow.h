@@ -7,6 +7,7 @@
 #include <QCheckBox>
 #include <QLabel>
 #include <QLineEdit>
+#include <QComboBox>
 #include <QHash>
 #include <QString>
 
@@ -29,7 +30,12 @@ private:
         RoleSubgroupGuid = Qt::UserRole,
         RoleSettingGuid = Qt::UserRole + 1,
         RoleHidden = Qt::UserRole + 2,
-        RoleItemType = Qt::UserRole + 3
+        RoleItemType = Qt::UserRole + 3,
+        RoleDescription = Qt::UserRole + 4,
+        RoleAcValue = Qt::UserRole + 5,
+        RoleDcValue = Qt::UserRole + 6,
+        RoleHasAc = Qt::UserRole + 7,
+        RoleHasDc = Qt::UserRole + 8
     };
 
     enum ItemType {
@@ -43,7 +49,11 @@ private:
     QPushButton *unhideButton;
     QPushButton *hideButton;
     QPushButton *copyGuidButton;
+    QPushButton *backupButton;
     QCheckBox *onlyHiddenCheckBox;
+    QComboBox *schemeComboBox;
+    QPushButton *switchSchemeButton;
+    QLabel *activeSchemeLabel;
     QLabel *statusLabel;
 
     QHash<QString, QTreeWidgetItem *> subgroupItems;
@@ -51,8 +61,12 @@ private:
     int totalSettingCount;
 
     void setupUi();
+    void loadStyleSheet(bool isDark);
     void showStartupSafetyNotice();
     void reloadTree();
+    void loadSchemes();
+    void switchActiveScheme();
+    void updateActiveSchemeDisplay();
     void addPowerSettingItem(const PowerSettingItem *item);
     void applyFilter();
     void updateActionButtons();
@@ -61,9 +75,20 @@ private:
 
     void setSelectedSettingHidden(bool hidden);
     void copySelectedGuids();
+    void copySelectedName();
+    void copySelectedRegistryPath();
+    void openSelectedInRegedit();
+    void backupRegistry();
+    void showTreeContextMenu(const QPoint &pos);
+    void onTreeItemDoubleClicked(QTreeWidgetItem *item, int column);
 
     static int enumerateCallback(
         const PowerSettingItem *item,
+        void *userData
+    );
+
+    static int schemeEnumerateCallback(
+        const PowerSchemeItem *item,
         void *userData
     );
 };

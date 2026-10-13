@@ -4,6 +4,7 @@
 #include <windows.h>
 #include <powrprof.h>
 #include <objbase.h>
+#include <shellapi.h>
 
 #include <stdio.h>
 #include <wchar.h>
@@ -48,6 +49,59 @@ static void read_name(
 
     if (rc != ERROR_SUCCESS || out[0] == L'\0') {
         wcscpy_s(out, out_cch, L"(no name)");
+    }
+}
+
+static void read_description(
+    const GUID *scheme,
+    const GUID *subgroup,
+    const GUID *setting,
+    wchar_t *out,
+    DWORD out_cch
+) {
+    DWORD bytes = out_cch * sizeof(wchar_t);
+    out[0] = L'\0';
+
+    DWORD rc = PowerReadDescription(
+        NULL,
+        scheme,
+        subgroup,
+        setting,
+        (PUCHAR)out,
+        &bytes
+    );
+
+    if (rc != ERROR_SUCCESS) {
+        out[0] = L'\0';
+    }
+}
+
+static void read_setting_values(
+    const GUID *scheme,
+    const GUID *subgroup,
+    const GUID *setting,
+    int *has_ac,
+    DWORD *ac_val,
+    int *has_dc,
+    DWORD *dc_val
+) {
+    *has_ac = 0;
+    *ac_val = 0;
+    *has_dc = 0;
+    *dc_val = 0;
+
+    DWORD val = 0;
+    DWORD rc = PowerReadACValueIndex(NULL, scheme, subgroup, setting, &val);
+    if (rc == ERROR_SUCCESS) {
+        *has_ac = 1;
+        *ac_val = val;
+    }
+
+    val = 0;
+    rc = PowerReadDCValueIndex(NULL, scheme, subgroup, setting, &val);
+    if (rc == ERROR_SUCCESS) {
+        *has_dc = 1;
+        *dc_val = val;
     }
 }
 
@@ -225,6 +279,24 @@ int enumerate_power_settings(
                 PPR_NAME_CCH
             );
 
+            read_description(
+                scheme,
+                &subgroup,
+                &setting,
+                item.description,
+                PPR_DESC_CCH
+            );
+
+            read_setting_values(
+                scheme,
+                &subgroup,
+                &setting,
+                &item.has_ac_value,
+                &item.ac_value,
+                &item.has_dc_value,
+                &item.dc_value
+            );
+
             guid_to_string(
                 &setting,
                 item.setting_guid_text,
@@ -240,4 +312,174 @@ int enumerate_power_settings(
 
     LocalFree(scheme);
     return ERROR_SUCCESS;
+}
+
+int enumerate_power_schemes(
+    PowerSchemeCallback callback,
+    void *user_data
+) {
+    if (callback == NULL) {
+        return ERROR_INVALID_PARAMETER;
+    }
+
+    GUID *active_scheme = NULL;
+    DWORD active_rc = PowerGetActiveScheme(NULL, &active_scheme);
+
+    for (DWORD index = 0; ; index++) {
+        GUID scheme;
+        DWORD size = sizeof(scheme);
+
+        DWORD rc = PowerEnumerate(
+            NULL,
+            NULL,
+            NULL,
+            ACCESS_SCHEME,
+            index,
+            (PUCHAR)&scheme,
+            &size
+        );
+
+        if (rc == ERROR_NO_MORE_ITEMS) {
+            break;
+        }
+
+        if (rc != ERROR_SUCCESS) {
+            continue;
+        }
+
+        PowerSchemeItem item;
+        ZeroMemory(&item, sizeof(item));
+        item.scheme_guid = scheme;
+
+        guid_to_string(&scheme, item.scheme_guid_text, PPR_GUID_CCH);
+        read_name(&scheme, NULL, NULL, item.scheme_name, PPR_NAME_CCH);
+
+        if (active_rc == ERROR_SUCCESS && active_scheme != NULL &&
+            IsEqualGUID(&scheme, active_scheme)) {
+            item.is_active = 1;
+        } else {
+            item.is_active = 0;
+        }
+
+        if (callback(&item, user_data) != 0) {
+            if (active_scheme != NULL) {
+                LocalFree(active_scheme);
+            }
+            return ERROR_SUCCESS;
+        }
+    }
+
+    if (active_scheme != NULL) {
+        LocalFree(active_scheme);
+    }
+    return ERROR_SUCCESS;
+}
+
+DWORD set_active_scheme_by_guid(const GUID *scheme_guid) {
+    if (scheme_guid == NULL) {
+        return ERROR_INVALID_PARAMETER;
+    }
+    return PowerSetActiveScheme(NULL, scheme_guid);
+}
+
+int open_in_regedit(
+    const wchar_t *subgroup_guid_text,
+    const wchar_t *setting_guid_text
+) {
+    wchar_t reg_path[1024];
+    if (setting_guid_text != NULL && setting_guid_text[0] != L'\0') {
+        swprintf_s(
+            reg_path,
+            1024,
+            L"Computer\\HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Power\\PowerSettings\\%s\\%s",
+            subgroup_guid_text,
+            setting_guid_text
+        );
+    } else {
+        swprintf_s(
+            reg_path,
+            1024,
+            L"Computer\\HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Power\\PowerSettings\\%s",
+            subgroup_guid_text
+        );
+    }
+
+    HKEY hKey = NULL;
+    LSTATUS status = RegOpenKeyExW(
+        HKEY_CURRENT_USER,
+        L"Software\\Microsoft\\Windows\\CurrentVersion\\Applets\\Regedit",
+        0,
+        KEY_SET_VALUE,
+        &hKey
+    );
+
+    if (status == ERROR_SUCCESS) {
+        RegSetValueExW(
+            hKey,
+            L"LastKey",
+            0,
+            REG_SZ,
+            (const BYTE *)reg_path,
+            (DWORD)((wcslen(reg_path) + 1) * sizeof(wchar_t))
+        );
+        RegCloseKey(hKey);
+    }
+
+    HINSTANCE hInst = ShellExecuteW(
+        NULL,
+        L"open",
+        L"regedit.exe",
+        NULL,
+        NULL,
+        SW_SHOWNORMAL
+    );
+
+    return ((INT_PTR)hInst > 32) ? 0 : (int)GetLastError();
+}
+
+int backup_power_settings_registry(const wchar_t *export_file_path) {
+    if (export_file_path == NULL || export_file_path[0] == L'\0') {
+        return ERROR_INVALID_PARAMETER;
+    }
+
+    wchar_t cmdline[2048];
+    swprintf_s(
+        cmdline,
+        2048,
+        L"reg.exe export \"HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Power\\PowerSettings\" \"%s\" /y",
+        export_file_path
+    );
+
+    STARTUPINFOW si;
+    PROCESS_INFORMATION pi;
+    ZeroMemory(&si, sizeof(si));
+    si.cb = sizeof(si);
+    si.dwFlags = STARTF_USESHOWWINDOW;
+    si.wShowWindow = SW_HIDE;
+    ZeroMemory(&pi, sizeof(pi));
+
+    if (!CreateProcessW(
+        NULL,
+        cmdline,
+        NULL,
+        NULL,
+        FALSE,
+        CREATE_NO_WINDOW,
+        NULL,
+        NULL,
+        &si,
+        &pi
+    )) {
+        return (int)GetLastError();
+    }
+
+    WaitForSingleObject(pi.hProcess, 10000);
+
+    DWORD exit_code = 0;
+    GetExitCodeProcess(pi.hProcess, &exit_code);
+
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+
+    return (int)exit_code;
 }
