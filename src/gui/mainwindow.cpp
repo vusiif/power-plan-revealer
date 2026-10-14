@@ -27,6 +27,8 @@
 #include <QPalette>
 #include <QColor>
 #include <QStyle>
+#include <QCloseEvent>
+#include <QSignalBlocker>
 
 #include <string>
 
@@ -58,6 +60,8 @@ MainWindow::MainWindow(QWidget *parent)
             loadStyleSheet(scheme == Qt::ColorScheme::Dark);
         }
     );
+
+    readSettings();
 
     showStartupSafetyNotice();
     loadSchemes();
@@ -94,6 +98,7 @@ void MainWindow::loadStyleSheet(bool isDark) {
 
 void MainWindow::setupUi() {
     setWindowTitle("PowerPlanRevealer");
+    setMinimumSize(880, 520);
 
     auto *central = new QWidget(this);
     auto *mainLayout = new QVBoxLayout(central);
@@ -229,9 +234,9 @@ void MainWindow::setupUi() {
 
     tree->header()->setStretchLastSection(false);
     tree->header()->setDefaultAlignment(Qt::AlignLeft | Qt::AlignVCenter);
-    tree->header()->setSectionResizeMode(ColumnName, QHeaderView::Stretch);
-    tree->header()->setSectionResizeMode(ColumnHidden, QHeaderView::ResizeToContents);
-    tree->header()->setSectionResizeMode(ColumnGuid, QHeaderView::ResizeToContents);
+    tree->header()->setSectionResizeMode(ColumnName, QHeaderView::Interactive);
+    tree->header()->setSectionResizeMode(ColumnHidden, QHeaderView::Interactive);
+    tree->header()->setSectionResizeMode(ColumnGuid, QHeaderView::Interactive);
 
     mainLayout->addWidget(heroFrame);
     mainLayout->addWidget(toolbarFrame);
@@ -994,4 +999,41 @@ void MainWindow::backupRegistry() {
             message
         );
     }
+}
+
+void MainWindow::closeEvent(QCloseEvent *event) {
+    writeSettings();
+    QMainWindow::closeEvent(event);
+}
+
+void MainWindow::readSettings() {
+    QSettings settings("PowerPlanRevealer", "PowerPlanRevealer");
+
+    const QByteArray geometry = settings.value("window/geometry").toByteArray();
+    if (geometry.isEmpty()) {
+        resize(1200, 700);
+    } else {
+        restoreGeometry(geometry);
+    }
+
+    const QByteArray headerState = settings.value("window/treeHeaderState").toByteArray();
+    if (!headerState.isEmpty()) {
+        tree->header()->restoreState(headerState);
+    } else {
+        tree->setColumnWidth(ColumnName, 620);
+        tree->setColumnWidth(ColumnHidden, 90);
+        tree->setColumnWidth(ColumnGuid, 420);
+    }
+
+    if (settings.contains("filter/onlyHidden")) {
+        const QSignalBlocker blocker(onlyHiddenCheckBox);
+        onlyHiddenCheckBox->setChecked(settings.value("filter/onlyHidden").toBool());
+    }
+}
+
+void MainWindow::writeSettings() {
+    QSettings settings("PowerPlanRevealer", "PowerPlanRevealer");
+    settings.setValue("window/geometry", saveGeometry());
+    settings.setValue("window/treeHeaderState", tree->header()->saveState());
+    settings.setValue("filter/onlyHidden", onlyHiddenCheckBox->isChecked());
 }
