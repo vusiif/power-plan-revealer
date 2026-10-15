@@ -28,11 +28,13 @@
 #include <QColor>
 #include <QStyle>
 #include <QCloseEvent>
+#include <QShowEvent>
 #include <QSignalBlocker>
 #include <QSet>
 
 #include <windows.h>
 #include <shellapi.h>
+#include <dwmapi.h>
 
 #include <string>
 
@@ -154,6 +156,8 @@ MainWindow::MainWindow(QWidget *parent)
 }
 
 void MainWindow::loadStyleSheet(bool isDark) {
+    updateTitleBarTheme(isDark);
+
     if (isDark) {
         QPalette darkPalette;
         darkPalette.setColor(QPalette::Window, QColor(15, 23, 42));
@@ -1376,4 +1380,52 @@ void MainWindow::setAllSettingsHidden(bool hidden) {
         QString("操作完成！已成功对 %1 项设置执行【%2】。").arg(count).arg(actionName)
     );
 }
+
+void MainWindow::showEvent(QShowEvent *event) {
+    QMainWindow::showEvent(event);
+    const bool isDark = (QGuiApplication::styleHints()->colorScheme() == Qt::ColorScheme::Dark);
+    updateTitleBarTheme(isDark);
+}
+
+void MainWindow::updateTitleBarTheme(bool isDark) {
+    HWND hwnd = reinterpret_cast<HWND>(winId());
+    if (!hwnd) {
+        return;
+    }
+
+    BOOL useDarkMode = isDark ? TRUE : FALSE;
+    // DWMWA_USE_IMMERSIVE_DARK_MODE = 20 (Windows 10 20H1+ and Windows 11)
+    // DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1 = 19 (Windows 10 1809 - 1909)
+    const DWORD DWMWA_USE_IMMERSIVE_DARK_MODE_VAL = 20;
+    const DWORD DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1_VAL = 19;
+
+    if (FAILED(DwmSetWindowAttribute(
+            hwnd,
+            DWMWA_USE_IMMERSIVE_DARK_MODE_VAL,
+            &useDarkMode,
+            sizeof(useDarkMode)))) {
+        DwmSetWindowAttribute(
+            hwnd,
+            DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1_VAL,
+            &useDarkMode,
+            sizeof(useDarkMode));
+    }
+
+    // In Windows 11 (build 22000+), DWMWA_CAPTION_COLOR and DWMWA_TEXT_COLOR allow exact theme matching
+    const DWORD DWMWA_CAPTION_COLOR_VAL = 35;
+    const DWORD DWMWA_TEXT_COLOR_VAL = 36;
+    const COLORREF DWMWA_COLOR_DEFAULT_VAL = 0xFFFFFFFF;
+
+    if (isDark) {
+        COLORREF captionColor = RGB(15, 23, 42); // #0f172a matching our Hero background
+        COLORREF textColor = RGB(248, 250, 252);   // #f8fafc matching our title text
+        DwmSetWindowAttribute(hwnd, DWMWA_CAPTION_COLOR_VAL, &captionColor, sizeof(captionColor));
+        DwmSetWindowAttribute(hwnd, DWMWA_TEXT_COLOR_VAL, &textColor, sizeof(textColor));
+    } else {
+        COLORREF defaultColor = DWMWA_COLOR_DEFAULT_VAL;
+        DwmSetWindowAttribute(hwnd, DWMWA_CAPTION_COLOR_VAL, &defaultColor, sizeof(defaultColor));
+        DwmSetWindowAttribute(hwnd, DWMWA_TEXT_COLOR_VAL, &defaultColor, sizeof(defaultColor));
+    }
+}
+
 

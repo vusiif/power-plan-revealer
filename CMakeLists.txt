@@ -53,6 +53,7 @@ add_executable(power_plan_revealer_gui
 target_link_libraries(power_plan_revealer_gui PRIVATE
         Qt6::Widgets
         ppr_core
+        Dwmapi
 )
 
 set_target_properties(power_plan_revealer_gui PROPERTIES

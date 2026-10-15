@@ -14,6 +14,7 @@
 #include "power_core.h"
 
 class QCloseEvent;
+class QShowEvent;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -23,8 +24,10 @@ public:
 
 protected:
     void closeEvent(QCloseEvent *event) override;
+    void showEvent(QShowEvent *event) override;
 
 private:
+    void updateTitleBarTheme(bool isDark);
     void readSettings();
     void writeSettings();
     enum TreeColumn {
