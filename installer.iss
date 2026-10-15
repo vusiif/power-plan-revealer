@@ -17,6 +17,7 @@ DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
 LicenseFile=LICENCE
+SetupIconFile=src\gui\resources\app.ico
 OutputDir=dist\v{#MyAppVersion}
 OutputBaseFilename=PowerPlanRevealer-v{#MyAppVersion}-win64-setup
 Compression=lzma2/ultra64

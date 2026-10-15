@@ -2,5 +2,7 @@
     <qresource prefix="/">
         <file>style-light.qss</file>
         <file>style-dark.qss</file>
+        <file>app.ico</file>
+        <file>app.png</file>
     </qresource>
 </RCC>

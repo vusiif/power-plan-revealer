@@ -48,6 +48,7 @@ add_executable(power_plan_revealer_gui
         src/gui/mainwindow.cpp
         src/gui/mainwindow.h
         src/gui/resources/resources.qrc
+        src/gui/resources/app.rc
 )
 
 target_link_libraries(power_plan_revealer_gui PRIVATE

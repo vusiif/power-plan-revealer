@@ -1,0 +1,32 @@
+#include <windows.h>
+
+IDI_ICON1 ICON "app.ico"
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION     0,3,0,0
+PRODUCTVERSION  0,3,0,0
+FILEFLAGSMASK   VS_FFI_FILEFLAGSMASK
+FILEFLAGS       0
+FILEOS          VOS_NT_WINDOWS32
+FILETYPE        VFT_APP
+FILESUBTYPE     VFT2_UNKNOWN
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"
+        BEGIN
+            VALUE "CompanyName",      "IceLolly"
+            VALUE "FileDescription",  "PowerPlanRevealer - Reveal hidden Windows power plan settings"
+            VALUE "FileVersion",      "0.3.0.0"
+            VALUE "InternalName",     "power-plan-revealer"
+            VALUE "LegalCopyright",   "Copyright (C) 2026 IceLolly. All rights reserved."
+            VALUE "OriginalFilename", "power-plan-revealer.exe"
+            VALUE "ProductName",      "PowerPlanRevealer"
+            VALUE "ProductVersion",   "0.3.0.0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0409, 1200
+    END
+END
