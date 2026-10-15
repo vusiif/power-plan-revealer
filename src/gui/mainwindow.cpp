@@ -29,8 +29,91 @@
 #include <QStyle>
 #include <QCloseEvent>
 #include <QSignalBlocker>
+#include <QSet>
+
+#include <windows.h>
+#include <shellapi.h>
 
 #include <string>
+
+namespace {
+
+const QStringList kGamingPresetGuids = {
+    "0CC5B647-C1DF-4637-891A-DEC35C318583",
+    "EA062031-0E34-4FF1-9B6D-EB10593AC08F",
+    "2DDD5A0F-0B42-4710-BC5D-08B504E6A659",
+    "BE337238-0D82-4146-A960-4F3749D470C7",
+    "45BCC021-7D09-4350-9E02-4F514D3CDD7D",
+    "5D3E9A59-E9D5-4B00-A6BD-FF34FF516548",
+    "5D3E9A59-E9D5-4B00-A6BD-FF34FF516547",
+    "8BAA4A4D-1616-4562-B01F-22C5635B637D",
+    "893DEE8E-2BEF-41E0-89C6-B55D0929964C",
+    "BC5038F7-23E0-4960-96DA-3373F009F631",
+    "94D3A615-A899-4AC5-8282-3E52B52AC837",
+    "EE12F906-D277-404B-B6DA-E5FA1A576DF5",
+    "A1662AB2-9D34-4E53-BA8B-2639B9E20857"
+};
+
+const QStringList kBatteryPresetGuids = {
+    "12BBEBE6-58D6-4636-95BB-3217EF867C1A",
+    "A9A07D01-E737-4DDA-9AE8-124B73B73134",
+    "FBD9AA66-9553-4097-BA44-ED6E9D65EAB8",
+    "13D09884-F74E-474A-A852-B6BDE8AD03A8",
+    "5C5BB349-AD29-4EE2-9D0B-2B25270F7A81",
+    "E69653CA-CF7F-4F05-AA73-CB833FA90AD4",
+    "BC5038F7-23E0-4960-96DA-3373F009F631",
+    "893DEE8E-2BEF-41E0-89C6-B55D0929964C",
+    "BE337238-0D82-4146-A960-4F3749D470C7",
+    "6738E2C4-E8A5-4142-F12D-64192F7A195E",
+    "48E6B7A6-50F5-4782-A5D4-53BB8F07E226",
+    "29F6C1DB-86DA-48C5-9FDB-F2B67B1F44DA",
+    "9D781570-7042-4E7E-81B0-700E07444D93"
+};
+
+const QStringList kAudioPresetGuids = {
+    "5D3E9A59-E9D5-4B00-A6BD-FF34FF516547",
+    "5D3E9A59-E9D5-4B00-A6BD-FF34FF516548",
+    "0CC5B647-C1DF-4637-891A-DEC35C318583",
+    "EA062031-0E34-4FF1-9B6D-EB10593AC08F",
+    "893DEE8E-2BEF-41E0-89C6-B55D0929964C",
+    "BC5038F7-23E0-4960-96DA-3373F009F631",
+    "94D3A615-A899-4AC5-8282-3E52B52AC837",
+    "EE12F906-D277-404B-B6DA-E5FA1A576DF5",
+    "48E6B7A6-50F5-4782-A5D4-53BB8F07E226"
+};
+
+const QSet<QString> kDefaultVisibleGuids = {
+    "6738E2C4-E8A5-4142-F12D-64192F7A195E",
+    "309D9467-7421-4107-87DA-4D64C964D087",
+    "12BBEBE6-58D6-4636-95BB-3217EF867C1A",
+    "29F6C1DB-86DA-48C5-9FDB-F2B67B1F44DA",
+    "94ACFC8E-67EE-4505-81AC-341A67C7E1B8",
+    "9D781570-7042-4E7E-81B0-700E07444D93",
+    "BD3B718A-0680-4D9D-8C66-2708A3074B95",
+    "5CA83367-6E45-459F-A27B-476B1D01C936",
+    "7648E789-20C3-43F0-85DE-D072239FC611",
+    "964446CBD15E4E2CB2F5D0F3239DA251",
+    "EE12F906-D277-404B-B6DA-E5FA1A576DF5",
+    "893DEE8E-2BEF-41E0-89C6-B55D0929964C",
+    "94D3A615-A899-4AC5-8282-3E52B52AC837",
+    "BC5038F7-23E0-4960-96DA-3373F009F631",
+    "3C0BC021-C8A8-4E07-A973-6B14CBCB2B7E",
+    "ADED5E82-B909-4619-9949-F5D71DAC0BCB",
+    "F1FBFDE2-A960-4165-9F88-50667911CE96",
+    "FBD9AA66-9553-4097-BA44-ED6E9D65EAB8",
+    "03680956-93BC-4294-BBA6-4E0F09BB717F",
+    "10778347-1370-4EE0-8BBD-33BDACAADE49",
+    "34C7B99F-9A6D-4B3C-8DC7-B6693B78CEF4",
+    "5DBB7C9F-38E9-40D2-9749-4F8A0E9F640F",
+    "637EA02F-BBCB-4015-8E2C-A1C7B9C0B546",
+    "8183BA9A-E910-48DA-8769-14AE6DC1170A",
+    "9A66D8D7-4FF7-4EF9-B5A2-5A326CA2A469",
+    "BCDED951-187B-4D05-BCCC-F7E51960C258",
+    "D8742DCB-3E6A-4B3C-B3FE-374623CDCF06",
+    "F3C5027D-CD16-4930-AA6B-90DB844A8F00"
+};
+
+} // namespace
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),
@@ -44,6 +127,8 @@ MainWindow::MainWindow(QWidget *parent)
       onlyHiddenCheckBox(nullptr),
       schemeComboBox(nullptr),
       switchSchemeButton(nullptr),
+      openControlPanelButton(nullptr),
+      presetButton(nullptr),
       activeSchemeLabel(nullptr),
       statusLabel(nullptr),
       totalSettingCount(0) {
@@ -140,11 +225,17 @@ void MainWindow::setupUi() {
     activeSchemeLabel = new QLabel(this);
     activeSchemeLabel->setObjectName("ActiveSchemeLabel");
 
+    openControlPanelButton = new QPushButton("⚙ 打开高级电源设置", this);
+    openControlPanelButton->setObjectName("PrimaryButton");
+    openControlPanelButton->setCursor(Qt::PointingHandCursor);
+    openControlPanelButton->setToolTip("直接呼出 Windows 原生“电源选项 - 高级设置”窗口，在此微调各选项的参数数值");
+
     schemeLayout->addWidget(schemeTitle);
     schemeLayout->addWidget(schemeComboBox);
     schemeLayout->addWidget(switchSchemeButton);
     schemeLayout->addWidget(activeSchemeLabel);
     schemeLayout->addStretch(1);
+    schemeLayout->addWidget(openControlPanelButton);
 
     heroLayout->addWidget(heroTitle);
     heroLayout->addWidget(heroSubtitle);
@@ -168,6 +259,32 @@ void MainWindow::setupUi() {
     copyGuidButton = new QPushButton("复制 GUID", this);
     backupButton = new QPushButton("备份注册表", this);
 
+    presetButton = new QPushButton("⚡ 场景预设与恢复", this);
+    presetButton->setObjectName("SecondaryButton");
+    presetButton->setCursor(Qt::PointingHandCursor);
+    presetButton->setToolTip("一键批量解锁针对特定场景（电竞、笔电续航、音频防降频）的电源设置，或恢复系统默认显隐状态");
+
+    auto *presetMenu = new QMenu(presetButton);
+    presetMenu->addAction("🎮 电竞低延迟包 (CPU核心停车/睿频/PCIe节能)", this, [this]() {
+        applyPreset("电竞低延迟包", kGamingPresetGuids);
+    });
+    presetMenu->addAction("🔋 笔电极限续航包 (Wi-Fi节能/自适应亮度/降频省电)", this, [this]() {
+        applyPreset("笔电极限续航包", kBatteryPresetGuids);
+    });
+    presetMenu->addAction("🎵 音频生产力防降频包 (防DPC延迟/锁频防爆音/USB不挂起)", this, [this]() {
+        applyPreset("音频生产力防降频包", kAudioPresetGuids);
+    });
+    presetMenu->addSeparator();
+    presetMenu->addAction("🔄 恢复出厂默认显隐状态 (约20项标准可见，其余隐藏)", this, &MainWindow::resetToDefaultVisibility);
+    presetMenu->addSeparator();
+    presetMenu->addAction("🔓 全部取消隐藏 (解锁所有高级电源设置)", this, [this]() {
+        setAllSettingsHidden(false);
+    });
+    presetMenu->addAction("🔒 全部隐藏 (隐藏所有高级电源设置)", this, [this]() {
+        setAllSettingsHidden(true);
+    });
+    presetButton->setMenu(presetMenu);
+
     refreshButton->setObjectName("SecondaryButton");
     unhideButton->setObjectName("PrimaryButton");
     hideButton->setObjectName("DangerButton");
@@ -181,7 +298,8 @@ void MainWindow::setupUi() {
         unhideButton,
         hideButton,
         copyGuidButton,
-        backupButton
+        backupButton,
+        presetButton
     };
 
     for (QPushButton *button : actionButtons) {
@@ -208,6 +326,7 @@ void MainWindow::setupUi() {
     topLayout->addWidget(hideButton);
     topLayout->addWidget(copyGuidButton);
     topLayout->addWidget(backupButton);
+    topLayout->addWidget(presetButton);
     topLayout->addWidget(onlyHiddenCheckBox);
     topLayout->addWidget(statusLabel);
 
@@ -243,6 +362,13 @@ void MainWindow::setupUi() {
     mainLayout->addWidget(tree, 1);
 
     setCentralWidget(central);
+
+    connect(
+        openControlPanelButton,
+        &QPushButton::clicked,
+        this,
+        &MainWindow::openNativePowerSettings
+    );
 
     connect(
         switchSchemeButton,
@@ -1037,3 +1163,217 @@ void MainWindow::writeSettings() {
     settings.setValue("window/treeHeaderState", tree->header()->saveState());
     settings.setValue("filter/onlyHidden", onlyHiddenCheckBox->isChecked());
 }
+
+void MainWindow::openNativePowerSettings() {
+    HINSTANCE res = ShellExecuteW(
+        NULL,
+        L"open",
+        L"control.exe",
+        L"powercfg.cpl,,1",
+        NULL,
+        SW_SHOWNORMAL
+    );
+
+    if (reinterpret_cast<INT_PTR>(res) <= 32) {
+        QMessageBox::warning(
+            this,
+            "打开失败",
+            "未能成功启动 Windows 控制面板。您可以按 Win+R 手动运行：\ncontrol.exe powercfg.cpl,,1"
+        );
+    } else {
+        statusLabel->setText("已打开高级设置");
+    }
+}
+
+void MainWindow::applyPreset(const QString &presetName, const QStringList &targetGuids) {
+    QMessageBox::StandardButton reply = QMessageBox::question(
+        this,
+        "应用场景预设",
+        QString("将为【%1】批量解锁对应的 %2 项高级电源设置。\n\n"
+                "• 作用：将相关选项在 Windows 控制面板中设置为“可见”。\n"
+                "• 安全提示：绝不会修改您的任何电源参数数值。\n\n"
+                "确定要继续吗？")
+            .arg(presetName)
+            .arg(targetGuids.size()),
+        QMessageBox::Yes | QMessageBox::No,
+        QMessageBox::Yes
+    );
+
+    if (reply != QMessageBox::Yes) {
+        return;
+    }
+
+    QSet<QString> targetSet;
+    for (const QString &guid : targetGuids) {
+        targetSet.insert(guid.trimmed().toUpper());
+    }
+
+    int updatedCount = 0;
+
+    for (int i = 0; i < tree->topLevelItemCount(); ++i) {
+        QTreeWidgetItem *subgroupItem = tree->topLevelItem(i);
+        const QString subgroupGuidStr = subgroupItem->data(ColumnName, RoleSubgroupGuid).toString();
+        GUID subgroupGuid;
+        const std::wstring subgroupWide = subgroupGuidStr.toStdWString();
+        if (!parse_guid_text(subgroupWide.c_str(), &subgroupGuid)) {
+            continue;
+        }
+
+        for (int j = 0; j < subgroupItem->childCount(); ++j) {
+            QTreeWidgetItem *settingItem = subgroupItem->child(j);
+            const QString settingGuidStr = settingItem->data(ColumnName, RoleSettingGuid).toString().trimmed().toUpper();
+
+            if (targetSet.contains(settingGuidStr)) {
+                GUID settingGuid;
+                const std::wstring settingWide = settingGuidStr.toStdWString();
+                if (parse_guid_text(settingWide.c_str(), &settingGuid)) {
+                    if (unhide_setting(&subgroupGuid, &settingGuid) == ERROR_SUCCESS) {
+                        updatedCount++;
+                    }
+                }
+            }
+        }
+    }
+
+    refresh_active_scheme();
+    reloadTree();
+
+    statusLabel->setText(QString("预设已应用 (%1 项)").arg(updatedCount));
+
+    QMessageBox::information(
+        this,
+        "预设应用完成",
+        QString("【%1】已应用！共成功解锁并公开了 %2 项电源设置。\n\n"
+                "您可以点击界面上的“⚙ 打开高级电源设置”按钮立即在控制面板中调参。")
+            .arg(presetName)
+            .arg(updatedCount)
+    );
+}
+
+void MainWindow::resetToDefaultVisibility() {
+    QMessageBox::StandardButton reply = QMessageBox::question(
+        this,
+        "恢复出厂默认显隐状态",
+        "确定要将所有电源设置项的显隐状态恢复为 Windows 官方出厂默认吗？\n\n"
+        "• 约 20 项常用标准设置保持可见（如睡眠时间、关闭显示、处理器状态等）\n"
+        "• 其余所有高级设置将恢复为“隐藏”状态\n"
+        "• 注意：本操作仅恢复显示/隐藏属性，绝不会改动您的任何具体电源数值。\n\n"
+        "是否继续？",
+        QMessageBox::Yes | QMessageBox::No,
+        QMessageBox::No
+    );
+
+    if (reply != QMessageBox::Yes) {
+        return;
+    }
+
+    int hideCount = 0;
+    int unhideCount = 0;
+
+    for (int i = 0; i < tree->topLevelItemCount(); ++i) {
+        QTreeWidgetItem *subgroupItem = tree->topLevelItem(i);
+        const QString subgroupGuidStr = subgroupItem->data(ColumnName, RoleSubgroupGuid).toString();
+        GUID subgroupGuid;
+        const std::wstring subgroupWide = subgroupGuidStr.toStdWString();
+        if (!parse_guid_text(subgroupWide.c_str(), &subgroupGuid)) {
+            continue;
+        }
+
+        for (int j = 0; j < subgroupItem->childCount(); ++j) {
+            QTreeWidgetItem *settingItem = subgroupItem->child(j);
+            const QString settingGuidStr = settingItem->data(ColumnName, RoleSettingGuid).toString().trimmed().toUpper();
+            GUID settingGuid;
+            const std::wstring settingWide = settingGuidStr.toStdWString();
+            if (!parse_guid_text(settingWide.c_str(), &settingGuid)) {
+                continue;
+            }
+
+            if (kDefaultVisibleGuids.contains(settingGuidStr)) {
+                if (unhide_setting(&subgroupGuid, &settingGuid) == ERROR_SUCCESS) {
+                    unhideCount++;
+                }
+            } else {
+                if (hide_setting(&subgroupGuid, &settingGuid) == ERROR_SUCCESS) {
+                    hideCount++;
+                }
+            }
+        }
+    }
+
+    refresh_active_scheme();
+    reloadTree();
+
+    statusLabel->setText("已恢复默认显隐");
+
+    QMessageBox::information(
+        this,
+        "已恢复默认显隐状态",
+        QString("已成功恢复 Windows 原厂出厂显隐状态！\n\n"
+                "• 保持可见项：%1 项\n"
+                "• 恢复隐藏项：%2 项\n\n"
+                "所有参数数值均保持原样未变。")
+            .arg(unhideCount)
+            .arg(hideCount)
+    );
+}
+
+void MainWindow::setAllSettingsHidden(bool hidden) {
+    const QString actionName = hidden ? "全部隐藏" : "全部取消隐藏";
+
+    QMessageBox::StandardButton reply = QMessageBox::question(
+        this,
+        actionName,
+        QString("确定要将系统中所有的电源设置项【%1】吗？\n\n"
+                "• 提示：这只会修改设置项在控制面板中的显隐属性，不会修改任何参数数值。\n\n"
+                "是否继续？")
+            .arg(actionName),
+        QMessageBox::Yes | QMessageBox::No,
+        QMessageBox::No
+    );
+
+    if (reply != QMessageBox::Yes) {
+        return;
+    }
+
+    int count = 0;
+
+    for (int i = 0; i < tree->topLevelItemCount(); ++i) {
+        QTreeWidgetItem *subgroupItem = tree->topLevelItem(i);
+        const QString subgroupGuidStr = subgroupItem->data(ColumnName, RoleSubgroupGuid).toString();
+        GUID subgroupGuid;
+        const std::wstring subgroupWide = subgroupGuidStr.toStdWString();
+        if (!parse_guid_text(subgroupWide.c_str(), &subgroupGuid)) {
+            continue;
+        }
+
+        for (int j = 0; j < subgroupItem->childCount(); ++j) {
+            QTreeWidgetItem *settingItem = subgroupItem->child(j);
+            const QString settingGuidStr = settingItem->data(ColumnName, RoleSettingGuid).toString();
+            GUID settingGuid;
+            const std::wstring settingWide = settingGuidStr.toStdWString();
+            if (!parse_guid_text(settingWide.c_str(), &settingGuid)) {
+                continue;
+            }
+
+            const DWORD rc = hidden
+                ? hide_setting(&subgroupGuid, &settingGuid)
+                : unhide_setting(&subgroupGuid, &settingGuid);
+
+            if (rc == ERROR_SUCCESS) {
+                count++;
+            }
+        }
+    }
+
+    refresh_active_scheme();
+    reloadTree();
+
+    statusLabel->setText(hidden ? "已全部隐藏" : "已全部解锁");
+
+    QMessageBox::information(
+        this,
+        "完成",
+        QString("操作完成！已成功对 %1 项设置执行【%2】。").arg(count).arg(actionName)
+    );
+}
+

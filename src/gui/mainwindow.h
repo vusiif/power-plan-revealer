@@ -60,6 +60,8 @@ private:
     QCheckBox *onlyHiddenCheckBox;
     QComboBox *schemeComboBox;
     QPushButton *switchSchemeButton;
+    QPushButton *openControlPanelButton;
+    QPushButton *presetButton;
     QLabel *activeSchemeLabel;
     QLabel *statusLabel;
 
@@ -74,6 +76,10 @@ private:
     void loadSchemes();
     void switchActiveScheme();
     void updateActiveSchemeDisplay();
+    void openNativePowerSettings();
+    void applyPreset(const QString &presetName, const QStringList &targetGuids);
+    void resetToDefaultVisibility();
+    void setAllSettingsHidden(bool hidden);
     void addPowerSettingItem(const PowerSettingItem *item);
     void applyFilter();
     void updateActionButtons();

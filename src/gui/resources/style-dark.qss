@@ -280,6 +280,12 @@ QMenu::item:selected {
     color: #93c5fd;
 }
 
+QMenu::separator {
+    height: 1px;
+    background: #334155;
+    margin: 4px 8px;
+}
+
 QToolTip {
     background-color: #020617;
     color: #f8fafc;
