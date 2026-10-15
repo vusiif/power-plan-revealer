@@ -1,5 +1,5 @@
 #define MyAppName "PowerPlanRevealer"
-#define MyAppVersion "0.2.0"
+#define MyAppVersion "0.3.0"
 #define MyAppPublisher "IceLolly"
 #define MyAppURL "https://github.com/vusiif/power-plan-revealer"
 #define MyAppExeName "power-plan-revealer.exe"
