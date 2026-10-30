@@ -94,7 +94,7 @@ const QSet<QString> kDefaultVisibleGuids = {
     "BD3B718A-0680-4D9D-8C66-2708A3074B95",
     "5CA83367-6E45-459F-A27B-476B1D01C936",
     "7648E789-20C3-43F0-85DE-D072239FC611",
-    "964446CBD15E4E2CB2F5D0F3239DA251",
+    "964446CB-D15E-4E2C-B2F5-D0F3239DA251",
     "EE12F906-D277-404B-B6DA-E5FA1A576DF5",
     "893DEE8E-2BEF-41E0-89C6-B55D0929964C",
     "94D3A615-A899-4AC5-8282-3E52B52AC837",
@@ -115,6 +115,75 @@ const QSet<QString> kDefaultVisibleGuids = {
     "F3C5027D-CD16-4930-AA6B-90DB844A8F00"
 };
 
+struct PresetContext {
+    const QSet<QString> *targetSet;
+    int updatedCount;
+};
+
+int presetEnumerateCallback(const PowerSettingItem *item, void *userData) {
+    if (item == nullptr || userData == nullptr) return 0;
+    auto *ctx = static_cast<PresetContext *>(userData);
+    const QString settingGuidStr = QString::fromWCharArray(item->setting_guid_text).toUpper();
+    if (ctx->targetSet->contains(settingGuidStr)) {
+        if (item->hidden) {
+            if (unhide_setting(&item->subgroup_guid, &item->setting_guid) == ERROR_SUCCESS) {
+                ctx->updatedCount++;
+            }
+        }
+    }
+    return 0;
+}
+
+struct ResetDefaultContext {
+    const QSet<QString> *defaultVisibleGuids;
+    int hideCount;
+    int unhideCount;
+};
+
+int resetDefaultEnumerateCallback(const PowerSettingItem *item, void *userData) {
+    if (item == nullptr || userData == nullptr) return 0;
+    auto *ctx = static_cast<ResetDefaultContext *>(userData);
+    const QString settingGuidStr = QString::fromWCharArray(item->setting_guid_text).toUpper();
+    if (ctx->defaultVisibleGuids->contains(settingGuidStr)) {
+        if (item->hidden) {
+            if (unhide_setting(&item->subgroup_guid, &item->setting_guid) == ERROR_SUCCESS) {
+                ctx->unhideCount++;
+            }
+        }
+    } else {
+        if (!item->hidden) {
+            if (hide_setting(&item->subgroup_guid, &item->setting_guid) == ERROR_SUCCESS) {
+                ctx->hideCount++;
+            }
+        }
+    }
+    return 0;
+}
+
+struct SetAllContext {
+    bool hide;
+    int count;
+};
+
+int setAllEnumerateCallback(const PowerSettingItem *item, void *userData) {
+    if (item == nullptr || userData == nullptr) return 0;
+    auto *ctx = static_cast<SetAllContext *>(userData);
+    if (ctx->hide) {
+        if (!item->hidden) {
+            if (hide_setting(&item->subgroup_guid, &item->setting_guid) == ERROR_SUCCESS) {
+                ctx->count++;
+            }
+        }
+    } else {
+        if (item->hidden) {
+            if (unhide_setting(&item->subgroup_guid, &item->setting_guid) == ERROR_SUCCESS) {
+                ctx->count++;
+            }
+        }
+    }
+    return 0;
+}
+
 } // namespace
 
 MainWindow::MainWindow(QWidget *parent)
@@ -131,6 +200,7 @@ MainWindow::MainWindow(QWidget *parent)
       switchSchemeButton(nullptr),
       openControlPanelButton(nullptr),
       presetButton(nullptr),
+      aboutButton(nullptr),
       activeSchemeLabel(nullptr),
       statusLabel(nullptr),
       totalSettingCount(0) {
@@ -268,6 +338,11 @@ void MainWindow::setupUi() {
     presetButton->setCursor(Qt::PointingHandCursor);
     presetButton->setToolTip("一键批量解锁针对特定场景（电竞、笔电续航、音频防降频）的电源设置，或恢复系统默认显隐状态");
 
+    aboutButton = new QPushButton("关于", this);
+    aboutButton->setObjectName("SecondaryButton");
+    aboutButton->setCursor(Qt::PointingHandCursor);
+    aboutButton->setToolTip("查看关于 PowerPlanRevealer、版本与开源主页");
+
     auto *presetMenu = new QMenu(presetButton);
     presetMenu->addAction("🎮 电竞低延迟包 (CPU核心停车/睿频/PCIe节能)", this, [this]() {
         applyPreset("电竞低延迟包", kGamingPresetGuids);
@@ -303,7 +378,8 @@ void MainWindow::setupUi() {
         hideButton,
         copyGuidButton,
         backupButton,
-        presetButton
+        presetButton,
+        aboutButton
     };
 
     for (QPushButton *button : actionButtons) {
@@ -331,6 +407,7 @@ void MainWindow::setupUi() {
     topLayout->addWidget(copyGuidButton);
     topLayout->addWidget(backupButton);
     topLayout->addWidget(presetButton);
+    topLayout->addWidget(aboutButton);
     topLayout->addWidget(onlyHiddenCheckBox);
     topLayout->addWidget(statusLabel);
 
@@ -372,6 +449,13 @@ void MainWindow::setupUi() {
         &QPushButton::clicked,
         this,
         &MainWindow::openNativePowerSettings
+    );
+
+    connect(
+        aboutButton,
+        &QPushButton::clicked,
+        this,
+        &MainWindow::showAboutDialog
     );
 
     connect(
@@ -736,15 +820,25 @@ void MainWindow::applyFilter() {
 
         bool hasVisibleChild = false;
 
+        const bool filterHidden = (query == "隐藏" || query == "已隐藏" || query == "是");
+        const bool filterVisible = (query == "显示" || query == "可见" || query == "未隐藏" || query == "否");
+
         for (int j = 0; j < subgroupItem->childCount(); ++j) {
             QTreeWidgetItem *settingItem = subgroupItem->child(j);
 
             const QString desc = settingItem->data(ColumnName, RoleDescription).toString();
-            const bool settingMatches =
+            const bool isHiddenItem = settingItem->data(ColumnName, RoleHidden).toInt() != 0;
+            bool settingMatches =
                 settingItem->text(ColumnName).contains(query, Qt::CaseInsensitive) ||
                 settingItem->text(ColumnHidden).contains(query, Qt::CaseInsensitive) ||
                 settingItem->text(ColumnGuid).contains(query, Qt::CaseInsensitive) ||
                 desc.contains(query, Qt::CaseInsensitive);
+
+            if (filterHidden && isHiddenItem) {
+                settingMatches = true;
+            } else if (filterVisible && !isHiddenItem) {
+                settingMatches = true;
+            }
 
             const bool visible = !hasQuery || subgroupMatches || settingMatches;
 
@@ -1189,6 +1283,23 @@ void MainWindow::openNativePowerSettings() {
     }
 }
 
+void MainWindow::showAboutDialog() {
+    QMessageBox box(this);
+    box.setWindowTitle("关于 PowerPlanRevealer");
+    box.setIconPixmap(QIcon(":/app.png").pixmap(64, 64));
+    box.setText("<h3>PowerPlanRevealer v0.3.0</h3>");
+    box.setInformativeText(
+        "<b>Windows 电源计划隐藏设置解锁器</b><br/><br/>"
+        "• <b>核心安全准则：</b>只控制隐藏与显示属性，绝不擅自修改任何电源参数数值。<br/>"
+        "• <b>开源主页：</b><a href=\"https://github.com/vusiif/power-plan-revealer\">https://github.com/vusiif/power-plan-revealer</a><br/>"
+        "• <b>作者：</b>IceLolly<br/>"
+        "• <b>开源协议：</b>MIT License<br/><br/>"
+        "致力于提供极简、透明、无公害的 Windows 高级电源设置调校辅助。"
+    );
+    box.setStandardButtons(QMessageBox::Ok);
+    box.exec();
+}
+
 void MainWindow::applyPreset(const QString &presetName, const QStringList &targetGuids) {
     QMessageBox::StandardButton reply = QMessageBox::question(
         this,
@@ -1212,37 +1323,16 @@ void MainWindow::applyPreset(const QString &presetName, const QStringList &targe
         targetSet.insert(guid.trimmed().toUpper());
     }
 
-    int updatedCount = 0;
+    PresetContext ctx;
+    ctx.targetSet = &targetSet;
+    ctx.updatedCount = 0;
 
-    for (int i = 0; i < tree->topLevelItemCount(); ++i) {
-        QTreeWidgetItem *subgroupItem = tree->topLevelItem(i);
-        const QString subgroupGuidStr = subgroupItem->data(ColumnName, RoleSubgroupGuid).toString();
-        GUID subgroupGuid;
-        const std::wstring subgroupWide = subgroupGuidStr.toStdWString();
-        if (!parse_guid_text(subgroupWide.c_str(), &subgroupGuid)) {
-            continue;
-        }
-
-        for (int j = 0; j < subgroupItem->childCount(); ++j) {
-            QTreeWidgetItem *settingItem = subgroupItem->child(j);
-            const QString settingGuidStr = settingItem->data(ColumnName, RoleSettingGuid).toString().trimmed().toUpper();
-
-            if (targetSet.contains(settingGuidStr)) {
-                GUID settingGuid;
-                const std::wstring settingWide = settingGuidStr.toStdWString();
-                if (parse_guid_text(settingWide.c_str(), &settingGuid)) {
-                    if (unhide_setting(&subgroupGuid, &settingGuid) == ERROR_SUCCESS) {
-                        updatedCount++;
-                    }
-                }
-            }
-        }
-    }
+    enumerate_power_settings(0, presetEnumerateCallback, &ctx);
 
     refresh_active_scheme();
     reloadTree();
 
-    statusLabel->setText(QString("预设已应用 (%1 项)").arg(updatedCount));
+    statusLabel->setText(QString("预设已应用 (%1 项)").arg(ctx.updatedCount));
 
     QMessageBox::information(
         this,
@@ -1250,7 +1340,7 @@ void MainWindow::applyPreset(const QString &presetName, const QStringList &targe
         QString("【%1】已应用！共成功解锁并公开了 %2 项电源设置。\n\n"
                 "您可以点击界面上的“⚙ 打开高级电源设置”按钮立即在控制面板中调参。")
             .arg(presetName)
-            .arg(updatedCount)
+            .arg(ctx.updatedCount)
     );
 }
 
@@ -1271,38 +1361,12 @@ void MainWindow::resetToDefaultVisibility() {
         return;
     }
 
-    int hideCount = 0;
-    int unhideCount = 0;
+    ResetDefaultContext ctx;
+    ctx.defaultVisibleGuids = &kDefaultVisibleGuids;
+    ctx.hideCount = 0;
+    ctx.unhideCount = 0;
 
-    for (int i = 0; i < tree->topLevelItemCount(); ++i) {
-        QTreeWidgetItem *subgroupItem = tree->topLevelItem(i);
-        const QString subgroupGuidStr = subgroupItem->data(ColumnName, RoleSubgroupGuid).toString();
-        GUID subgroupGuid;
-        const std::wstring subgroupWide = subgroupGuidStr.toStdWString();
-        if (!parse_guid_text(subgroupWide.c_str(), &subgroupGuid)) {
-            continue;
-        }
-
-        for (int j = 0; j < subgroupItem->childCount(); ++j) {
-            QTreeWidgetItem *settingItem = subgroupItem->child(j);
-            const QString settingGuidStr = settingItem->data(ColumnName, RoleSettingGuid).toString().trimmed().toUpper();
-            GUID settingGuid;
-            const std::wstring settingWide = settingGuidStr.toStdWString();
-            if (!parse_guid_text(settingWide.c_str(), &settingGuid)) {
-                continue;
-            }
-
-            if (kDefaultVisibleGuids.contains(settingGuidStr)) {
-                if (unhide_setting(&subgroupGuid, &settingGuid) == ERROR_SUCCESS) {
-                    unhideCount++;
-                }
-            } else {
-                if (hide_setting(&subgroupGuid, &settingGuid) == ERROR_SUCCESS) {
-                    hideCount++;
-                }
-            }
-        }
-    }
+    enumerate_power_settings(0, resetDefaultEnumerateCallback, &ctx);
 
     refresh_active_scheme();
     reloadTree();
@@ -1316,8 +1380,8 @@ void MainWindow::resetToDefaultVisibility() {
                 "• 保持可见项：%1 项\n"
                 "• 恢复隐藏项：%2 项\n\n"
                 "所有参数数值均保持原样未变。")
-            .arg(unhideCount)
-            .arg(hideCount)
+            .arg(ctx.unhideCount)
+            .arg(ctx.hideCount)
     );
 }
 
@@ -1339,35 +1403,11 @@ void MainWindow::setAllSettingsHidden(bool hidden) {
         return;
     }
 
-    int count = 0;
+    SetAllContext ctx;
+    ctx.hide = hidden;
+    ctx.count = 0;
 
-    for (int i = 0; i < tree->topLevelItemCount(); ++i) {
-        QTreeWidgetItem *subgroupItem = tree->topLevelItem(i);
-        const QString subgroupGuidStr = subgroupItem->data(ColumnName, RoleSubgroupGuid).toString();
-        GUID subgroupGuid;
-        const std::wstring subgroupWide = subgroupGuidStr.toStdWString();
-        if (!parse_guid_text(subgroupWide.c_str(), &subgroupGuid)) {
-            continue;
-        }
-
-        for (int j = 0; j < subgroupItem->childCount(); ++j) {
-            QTreeWidgetItem *settingItem = subgroupItem->child(j);
-            const QString settingGuidStr = settingItem->data(ColumnName, RoleSettingGuid).toString();
-            GUID settingGuid;
-            const std::wstring settingWide = settingGuidStr.toStdWString();
-            if (!parse_guid_text(settingWide.c_str(), &settingGuid)) {
-                continue;
-            }
-
-            const DWORD rc = hidden
-                ? hide_setting(&subgroupGuid, &settingGuid)
-                : unhide_setting(&subgroupGuid, &settingGuid);
-
-            if (rc == ERROR_SUCCESS) {
-                count++;
-            }
-        }
-    }
+    enumerate_power_settings(0, setAllEnumerateCallback, &ctx);
 
     refresh_active_scheme();
     reloadTree();
@@ -1377,7 +1417,7 @@ void MainWindow::setAllSettingsHidden(bool hidden) {
     QMessageBox::information(
         this,
         "完成",
-        QString("操作完成！已成功对 %1 项设置执行【%2】。").arg(count).arg(actionName)
+        QString("操作完成！已成功对 %1 项设置执行【%2】。").arg(ctx.count).arg(actionName)
     );
 }
 

@@ -386,6 +386,10 @@ int open_in_regedit(
     const wchar_t *subgroup_guid_text,
     const wchar_t *setting_guid_text
 ) {
+    if (subgroup_guid_text == NULL || subgroup_guid_text[0] == L'\0') {
+        return ERROR_INVALID_PARAMETER;
+    }
+
     wchar_t reg_path[1024];
     if (setting_guid_text != NULL && setting_guid_text[0] != L'\0') {
         swprintf_s(
@@ -442,11 +446,25 @@ int backup_power_settings_registry(const wchar_t *export_file_path) {
         return ERROR_INVALID_PARAMETER;
     }
 
+    if (wcschr(export_file_path, L'\"') != NULL) {
+        return ERROR_INVALID_NAME;
+    }
+
+    wchar_t sys_dir[MAX_PATH];
+    UINT dir_len = GetSystemDirectoryW(sys_dir, MAX_PATH);
+    if (dir_len == 0 || dir_len >= MAX_PATH) {
+        return (int)GetLastError();
+    }
+
+    wchar_t reg_exe[MAX_PATH];
+    swprintf_s(reg_exe, MAX_PATH, L"%s\\reg.exe", sys_dir);
+
     wchar_t cmdline[2048];
     swprintf_s(
         cmdline,
         2048,
-        L"reg.exe export \"HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Power\\PowerSettings\" \"%s\" /y",
+        L"\"%s\\reg.exe\" export \"HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Power\\PowerSettings\" \"%s\" /y",
+        sys_dir,
         export_file_path
     );
 
@@ -459,7 +477,7 @@ int backup_power_settings_registry(const wchar_t *export_file_path) {
     ZeroMemory(&pi, sizeof(pi));
 
     if (!CreateProcessW(
-        NULL,
+        reg_exe,
         cmdline,
         NULL,
         NULL,
@@ -473,7 +491,13 @@ int backup_power_settings_registry(const wchar_t *export_file_path) {
         return (int)GetLastError();
     }
 
-    WaitForSingleObject(pi.hProcess, 10000);
+    DWORD wait_res = WaitForSingleObject(pi.hProcess, 15000);
+    if (wait_res == WAIT_TIMEOUT) {
+        TerminateProcess(pi.hProcess, (DWORD)-1);
+        CloseHandle(pi.hProcess);
+        CloseHandle(pi.hThread);
+        return WAIT_TIMEOUT;
+    }
 
     DWORD exit_code = 0;
     GetExitCodeProcess(pi.hProcess, &exit_code);

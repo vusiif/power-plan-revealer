@@ -324,5 +324,5 @@ int wmain(int argc, wchar_t **argv) {
     }
 
     print_usage();
-    return 0;
+    return 1;
 }

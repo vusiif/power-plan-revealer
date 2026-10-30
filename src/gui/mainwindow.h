@@ -65,6 +65,7 @@ private:
     QPushButton *switchSchemeButton;
     QPushButton *openControlPanelButton;
     QPushButton *presetButton;
+    QPushButton *aboutButton;
     QLabel *activeSchemeLabel;
     QLabel *statusLabel;
 
@@ -80,6 +81,7 @@ private:
     void switchActiveScheme();
     void updateActiveSchemeDisplay();
     void openNativePowerSettings();
+    void showAboutDialog();
     void applyPreset(const QString &presetName, const QStringList &targetGuids);
     void resetToDefaultVisibility();
     void setAllSettingsHidden(bool hidden);
