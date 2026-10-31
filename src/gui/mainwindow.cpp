@@ -123,7 +123,7 @@ struct PresetContext {
 int presetEnumerateCallback(const PowerSettingItem *item, void *userData) {
     if (item == nullptr || userData == nullptr) return 0;
     auto *ctx = static_cast<PresetContext *>(userData);
-    const QString settingGuidStr = QString::fromWCharArray(item->setting_guid_text).toUpper();
+    const QString settingGuidStr = QString::fromWCharArray(item->setting_guid_text, static_cast<qsizetype>(wcsnlen_s(item->setting_guid_text, PPR_GUID_CCH))).toUpper();
     if (ctx->targetSet->contains(settingGuidStr)) {
         if (item->hidden) {
             if (unhide_setting(&item->subgroup_guid, &item->setting_guid) == ERROR_SUCCESS) {
@@ -143,7 +143,7 @@ struct ResetDefaultContext {
 int resetDefaultEnumerateCallback(const PowerSettingItem *item, void *userData) {
     if (item == nullptr || userData == nullptr) return 0;
     auto *ctx = static_cast<ResetDefaultContext *>(userData);
-    const QString settingGuidStr = QString::fromWCharArray(item->setting_guid_text).toUpper();
+    const QString settingGuidStr = QString::fromWCharArray(item->setting_guid_text, static_cast<qsizetype>(wcsnlen_s(item->setting_guid_text, PPR_GUID_CCH))).toUpper();
     if (ctx->defaultVisibleGuids->contains(settingGuidStr)) {
         if (item->hidden) {
             if (unhide_setting(&item->subgroup_guid, &item->setting_guid) == ERROR_SUCCESS) {
@@ -730,11 +730,11 @@ void MainWindow::addPowerSettingItem(const PowerSettingItem *item) {
         return;
     }
 
-    const QString subgroupName = QString::fromWCharArray(item->subgroup_name);
-    const QString settingName = QString::fromWCharArray(item->setting_name);
-    const QString subgroupGuid = QString::fromWCharArray(item->subgroup_guid_text);
-    const QString settingGuid = QString::fromWCharArray(item->setting_guid_text);
-    const QString description = QString::fromWCharArray(item->description);
+    const QString subgroupName = QString::fromWCharArray(item->subgroup_name, static_cast<qsizetype>(wcsnlen_s(item->subgroup_name, PPR_NAME_CCH)));
+    const QString settingName = QString::fromWCharArray(item->setting_name, static_cast<qsizetype>(wcsnlen_s(item->setting_name, PPR_NAME_CCH)));
+    const QString subgroupGuid = QString::fromWCharArray(item->subgroup_guid_text, static_cast<qsizetype>(wcsnlen_s(item->subgroup_guid_text, PPR_GUID_CCH)));
+    const QString settingGuid = QString::fromWCharArray(item->setting_guid_text, static_cast<qsizetype>(wcsnlen_s(item->setting_guid_text, PPR_GUID_CCH)));
+    const QString description = QString::fromWCharArray(item->description, static_cast<qsizetype>(wcsnlen_s(item->description, PPR_DESC_CCH)));
     const QString hiddenText = item->hidden ? "是" : "否";
 
     QTreeWidgetItem *subgroupItem = subgroupItems.value(subgroupGuid, nullptr);
@@ -820,8 +820,11 @@ void MainWindow::applyFilter() {
 
         bool hasVisibleChild = false;
 
-        const bool filterHidden = (query == "隐藏" || query == "已隐藏" || query == "是");
-        const bool filterVisible = (query == "显示" || query == "可见" || query == "未隐藏" || query == "否");
+        const QString queryLower = query.toLower();
+        const bool filterHidden = (query == "隐藏" || query == "已隐藏" || query == "是" ||
+                                   queryLower == "hidden" || queryLower == "hide");
+        const bool filterVisible = (query == "显示" || query == "可见" || query == "未隐藏" || query == "否" ||
+                                    queryLower == "visible" || queryLower == "show" || queryLower == "unhide");
 
         for (int j = 0; j < subgroupItem->childCount(); ++j) {
             QTreeWidgetItem *settingItem = subgroupItem->child(j);

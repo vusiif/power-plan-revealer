@@ -450,6 +450,21 @@ int backup_power_settings_registry(const wchar_t *export_file_path) {
         return ERROR_INVALID_NAME;
     }
 
+    // Verify parent directory exists if a full path is provided
+    wchar_t dir_buffer[MAX_PATH];
+    wcsncpy_s(dir_buffer, MAX_PATH, export_file_path, _TRUNCATE);
+    wchar_t *last_slash = wcsrchr(dir_buffer, L'\\');
+    if (last_slash == NULL) {
+        last_slash = wcsrchr(dir_buffer, L'/');
+    }
+    if (last_slash != NULL) {
+        *last_slash = L'\0';
+        DWORD attrs = GetFileAttributesW(dir_buffer);
+        if (attrs == INVALID_FILE_ATTRIBUTES || !(attrs & FILE_ATTRIBUTE_DIRECTORY)) {
+            return ERROR_PATH_NOT_FOUND;
+        }
+    }
+
     wchar_t sys_dir[MAX_PATH];
     UINT dir_len = GetSystemDirectoryW(sys_dir, MAX_PATH);
     if (dir_len == 0 || dir_len >= MAX_PATH) {

@@ -6,7 +6,7 @@
 
 **安全、现代、纯粹的 Windows 电源计划隐藏高级选项管理器**
 
-[![License: LGPL-2.1](https://img.shields.io/badge/License-LGPL--2.1-blue.svg)](LICENCE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENCE)
 [![Platform: Windows 10 / 11](https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011%20(x64)-0078D6.svg?logo=windows)](https://github.com/vusiif/power-plan-revealer)
 [![Qt: 6.x](https://img.shields.io/badge/Qt-6.x-41CD52.svg?logo=qt)](https://www.qt.io/)
 [![Release: v0.3.0](https://img.shields.io/badge/Release-v0.3.0-brightgreen.svg)](https://github.com/vusiif/power-plan-revealer/releases)
@@ -169,4 +169,4 @@ cmake --build build --config Release
 
 ## 📄 开源许可证
 
-本项目遵循 [GNU Lesser General Public License v2.1](LICENCE) (LGPL-2.1) 协议开源。
+本项目遵循 [MIT License](LICENCE) 协议开源。
