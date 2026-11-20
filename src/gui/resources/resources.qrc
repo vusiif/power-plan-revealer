@@ -4,5 +4,7 @@
         <file>style-dark.qss</file>
         <file>app.ico</file>
         <file>app.png</file>
+        <file>translations/power-plan-revealer_en.qm</file>
+        <file>translations/power-plan-revealer_zh_CN.qm</file>
     </qresource>
 </RCC>

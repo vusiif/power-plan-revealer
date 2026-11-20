@@ -256,7 +256,7 @@ void MainWindow::loadStyleSheet(bool isDark) {
 }
 
 void MainWindow::setupUi() {
-    setWindowTitle("PowerPlanRevealer");
+    setWindowTitle(tr("PowerPlanRevealer"));
     setMinimumSize(880, 520);
 
     auto *central = new QWidget(this);
@@ -271,11 +271,11 @@ void MainWindow::setupUi() {
     heroLayout->setContentsMargins(18, 14, 18, 14);
     heroLayout->setSpacing(8);
 
-    auto *heroTitle = new QLabel("PowerPlanRevealer", this);
+    auto *heroTitle = new QLabel(tr("PowerPlanRevealer"), this);
     heroTitle->setObjectName("HeroTitle");
 
     auto *heroSubtitle = new QLabel(
-        "查看、搜索并管理 Windows 电源计划高级设置的隐藏状态",
+        tr("查看、搜索并管理 Windows 电源计划高级设置的隐藏状态"),
         this
     );
     heroSubtitle->setObjectName("HeroSubtitle");
@@ -284,25 +284,25 @@ void MainWindow::setupUi() {
     auto *schemeLayout = new QHBoxLayout();
     schemeLayout->setSpacing(8);
 
-    auto *schemeTitle = new QLabel("电源计划方案：", this);
+    auto *schemeTitle = new QLabel(tr("电源计划方案："), this);
     schemeTitle->setObjectName("SchemeTitle");
 
     schemeComboBox = new QComboBox(this);
     schemeComboBox->setObjectName("SchemeComboBox");
     schemeComboBox->setCursor(Qt::PointingHandCursor);
 
-    switchSchemeButton = new QPushButton("设为当前活动方案", this);
+    switchSchemeButton = new QPushButton(tr("设为当前活动方案"), this);
     switchSchemeButton->setObjectName("PrimaryButton");
     switchSchemeButton->setCursor(Qt::PointingHandCursor);
-    switchSchemeButton->setToolTip("将下拉框中选中的电源计划激活为系统当前运行的方案");
+    switchSchemeButton->setToolTip(tr("将下拉框中选中的电源计划激活为系统当前运行的方案"));
 
     activeSchemeLabel = new QLabel(this);
     activeSchemeLabel->setObjectName("ActiveSchemeLabel");
 
-    openControlPanelButton = new QPushButton("⚙ 打开高级电源设置", this);
+    openControlPanelButton = new QPushButton(tr("⚙ 打开高级电源设置"), this);
     openControlPanelButton->setObjectName("PrimaryButton");
     openControlPanelButton->setCursor(Qt::PointingHandCursor);
-    openControlPanelButton->setToolTip("直接呼出 Windows 原生“电源选项 - 高级设置”窗口，在此微调各选项的参数数值");
+    openControlPanelButton->setToolTip(tr("直接呼出 Windows 原生“电源选项 - 高级设置”窗口，在此微调各选项的参数数值"));
 
     schemeLayout->addWidget(schemeTitle);
     schemeLayout->addWidget(schemeComboBox);
@@ -324,42 +324,42 @@ void MainWindow::setupUi() {
 
     searchEdit = new QLineEdit(this);
     searchEdit->setObjectName("SearchEdit");
-    searchEdit->setPlaceholderText("搜索名称、GUID 或说明关键字...");
+    searchEdit->setPlaceholderText(tr("搜索名称、GUID 或说明关键字..."));
     searchEdit->setClearButtonEnabled(true);
 
-    refreshButton = new QPushButton("刷新", this);
-    unhideButton = new QPushButton("取消隐藏所选项", this);
-    hideButton = new QPushButton("隐藏所选项", this);
-    copyGuidButton = new QPushButton("复制 GUID", this);
-    backupButton = new QPushButton("备份注册表", this);
+    refreshButton = new QPushButton(tr("刷新"), this);
+    unhideButton = new QPushButton(tr("取消隐藏所选项"), this);
+    hideButton = new QPushButton(tr("隐藏所选项"), this);
+    copyGuidButton = new QPushButton(tr("复制 GUID"), this);
+    backupButton = new QPushButton(tr("备份注册表"), this);
 
-    presetButton = new QPushButton("⚡ 场景预设与恢复", this);
+    presetButton = new QPushButton(tr("⚡ 场景预设与恢复"), this);
     presetButton->setObjectName("SecondaryButton");
     presetButton->setCursor(Qt::PointingHandCursor);
-    presetButton->setToolTip("一键批量解锁针对特定场景（电竞、笔电续航、音频防降频）的电源设置，或恢复系统默认显隐状态");
+    presetButton->setToolTip(tr("一键批量解锁针对特定场景（电竞、笔电续航、音频防降频）的电源设置，或恢复系统默认显隐状态"));
 
-    aboutButton = new QPushButton("关于", this);
+    aboutButton = new QPushButton(tr("关于"), this);
     aboutButton->setObjectName("SecondaryButton");
     aboutButton->setCursor(Qt::PointingHandCursor);
-    aboutButton->setToolTip("查看关于 PowerPlanRevealer、版本与开源主页");
+    aboutButton->setToolTip(tr("查看关于 PowerPlanRevealer、版本与开源主页"));
 
     auto *presetMenu = new QMenu(presetButton);
-    presetMenu->addAction("🎮 电竞低延迟包 (CPU核心停车/睿频/PCIe节能)", this, [this]() {
-        applyPreset("电竞低延迟包", kGamingPresetGuids);
+    presetMenu->addAction(tr("🎮 电竞低延迟包 (CPU核心停车/睿频/PCIe节能)"), this, [this]() {
+        applyPreset(tr("电竞低延迟包"), kGamingPresetGuids);
     });
-    presetMenu->addAction("🔋 笔电极限续航包 (Wi-Fi节能/自适应亮度/降频省电)", this, [this]() {
-        applyPreset("笔电极限续航包", kBatteryPresetGuids);
+    presetMenu->addAction(tr("🔋 笔电极限续航包 (Wi-Fi节能/自适应亮度/降频省电)"), this, [this]() {
+        applyPreset(tr("笔电极限续航包"), kBatteryPresetGuids);
     });
-    presetMenu->addAction("🎵 音频生产力防降频包 (防DPC延迟/锁频防爆音/USB不挂起)", this, [this]() {
-        applyPreset("音频生产力防降频包", kAudioPresetGuids);
+    presetMenu->addAction(tr("🎵 音频生产力防降频包 (防DPC延迟/锁频防爆音/USB不挂起)"), this, [this]() {
+        applyPreset(tr("音频生产力防降频包"), kAudioPresetGuids);
     });
     presetMenu->addSeparator();
-    presetMenu->addAction("🔄 恢复出厂默认显隐状态 (约20项标准可见，其余隐藏)", this, &MainWindow::resetToDefaultVisibility);
+    presetMenu->addAction(tr("🔄 恢复出厂默认显隐状态 (约20项标准可见，其余隐藏)"), this, &MainWindow::resetToDefaultVisibility);
     presetMenu->addSeparator();
-    presetMenu->addAction("🔓 全部取消隐藏 (解锁所有高级电源设置)", this, [this]() {
+    presetMenu->addAction(tr("🔓 全部取消隐藏 (解锁所有高级电源设置)"), this, [this]() {
         setAllSettingsHidden(false);
     });
-    presetMenu->addAction("🔒 全部隐藏 (隐藏所有高级电源设置)", this, [this]() {
+    presetMenu->addAction(tr("🔒 全部隐藏 (隐藏所有高级电源设置)"), this, [this]() {
         setAllSettingsHidden(true);
     });
     presetButton->setMenu(presetMenu);
@@ -370,7 +370,7 @@ void MainWindow::setupUi() {
     copyGuidButton->setObjectName("SecondaryButton");
     backupButton->setObjectName("SecondaryButton");
 
-    backupButton->setToolTip("导出当前系统电源设置注册表项为 .reg 备份文件");
+    backupButton->setToolTip(tr("导出当前系统电源设置注册表项为 .reg 备份文件"));
 
     QPushButton *actionButtons[] = {
         refreshButton,
@@ -390,7 +390,7 @@ void MainWindow::setupUi() {
     hideButton->setEnabled(false);
     copyGuidButton->setEnabled(false);
 
-    onlyHiddenCheckBox = new QCheckBox("仅显示隐藏项", this);
+    onlyHiddenCheckBox = new QCheckBox(tr("仅显示隐藏项"), this);
     onlyHiddenCheckBox->setObjectName("OnlyHiddenCheckBox");
     onlyHiddenCheckBox->setChecked(true);
     onlyHiddenCheckBox->setCursor(Qt::PointingHandCursor);
@@ -415,9 +415,9 @@ void MainWindow::setupUi() {
     tree->setObjectName("PowerTree");
     tree->setColumnCount(3);
     tree->setHeaderLabels({
-        "名称",
-        "隐藏",
-        "GUID"
+        tr("名称"),
+        tr("隐藏"),
+        tr("GUID")
     });
 
     tree->setRootIsDecorated(true);
@@ -560,7 +560,7 @@ int MainWindow::schemeEnumerateCallback(
 
     const QString name = QString::fromWCharArray(item->scheme_name);
     const QString guid = QString::fromWCharArray(item->scheme_guid_text);
-    const QString text = item->is_active ? QString("%1 (当前激活)").arg(name) : name;
+    const QString text = item->is_active ? tr("%1 (当前激活)").arg(name) : name;
 
     window->schemeComboBox->addItem(text, guid);
     if (item->is_active) {
@@ -587,23 +587,23 @@ void MainWindow::switchActiveScheme() {
     GUID schemeGuid;
     const std::wstring wideGuid = guidText.toStdWString();
     if (!parse_guid_text(wideGuid.c_str(), &schemeGuid)) {
-        QMessageBox::critical(this, "错误", "无效的电源方案 GUID。");
+        QMessageBox::critical(this, tr("错误"), tr("无效的电源方案 GUID。"));
         return;
     }
 
     const DWORD rc = set_active_scheme_by_guid(&schemeGuid);
     if (rc != ERROR_SUCCESS) {
-        QString msg = QString("切换方案失败，错误代码：%1").arg(rc);
+        QString msg = tr("切换方案失败，错误代码：%1").arg(rc);
         if (rc == ERROR_ACCESS_DENIED) {
-            msg += "\n\n访问被拒绝。请确认已以管理员身份运行。";
+            msg += tr("\n\n访问被拒绝。请确认已以管理员身份运行。");
         }
-        QMessageBox::critical(this, "操作失败", msg);
+        QMessageBox::critical(this, tr("操作失败"), msg);
         return;
     }
 
     loadSchemes();
     reloadTree();
-    statusLabel->setText("方案已激活");
+    statusLabel->setText(tr("方案已激活"));
 }
 
 void MainWindow::updateActiveSchemeDisplay() {
@@ -611,10 +611,10 @@ void MainWindow::updateActiveSchemeDisplay() {
     DWORD rc = get_active_scheme_name(schemeName, PPR_NAME_CCH);
     if (rc == ERROR_SUCCESS) {
         activeSchemeLabel->setText(
-            QString("当前激活：%1").arg(QString::fromWCharArray(schemeName))
+            tr("当前激活：%1").arg(QString::fromWCharArray(schemeName))
         );
     } else {
-        activeSchemeLabel->setText("当前激活：未知");
+        activeSchemeLabel->setText(tr("当前激活：未知"));
     }
 }
 
@@ -635,27 +635,27 @@ void MainWindow::showStartupSafetyNotice() {
 
     QMessageBox box(this);
     box.setIcon(QMessageBox::Warning);
-    box.setWindowTitle("安全提示");
+    box.setWindowTitle(tr("安全提示"));
 
     box.setText(
-        "PowerPlanRevealer 可以修改 Windows 电源高级设置项的隐藏状态。"
+        tr("PowerPlanRevealer 可以修改 Windows 电源高级设置项的隐藏状态。")
     );
 
     box.setInformativeText(
-        "在使用“隐藏”或“取消隐藏”功能之前，建议先创建系统还原点，"
-        "或点击工具栏上的“备份注册表”导出备份。\n\n"
-        "注册表路径：\n"
-        "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Power\\PowerSettings\n\n"
-        "本工具只会修改所选电源设置项的隐藏属性（hide attribute），"
-        "不会擅自修改电源设置的具体数值。"
-        "不过这些设置属于系统级，修改前请确保了解所操作的项目。"
+        tr("在使用“隐藏”或“取消隐藏”功能之前，建议先创建系统还原点，"
+           "或点击工具栏上的“备份注册表”导出备份。\n\n"
+           "注册表路径：\n"
+           "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Power\\PowerSettings\n\n"
+           "本工具只会修改所选电源设置项的隐藏属性（hide attribute），"
+           "不会擅自修改电源设置的具体数值。"
+           "不过这些设置属于系统级，修改前请确保了解所操作的项目。")
     );
 
     box.setStandardButtons(QMessageBox::Ok);
     box.setDefaultButton(QMessageBox::Ok);
 
     auto *dontShowAgain = new QCheckBox(
-        "不再显示此提示",
+        tr("不再显示此提示"),
         &box
     );
 
@@ -690,11 +690,11 @@ void MainWindow::reloadTree() {
 
         QMessageBox::critical(
             this,
-            "错误",
-            QString("枚举电源设置失败。错误代码：%1").arg(rc)
+            tr("错误"),
+            tr("枚举电源设置失败。错误代码：%1").arg(rc)
         );
 
-        statusLabel->setText("失败");
+        statusLabel->setText(tr("失败"));
         return;
     }
 
@@ -735,7 +735,7 @@ void MainWindow::addPowerSettingItem(const PowerSettingItem *item) {
     const QString subgroupGuid = QString::fromWCharArray(item->subgroup_guid_text, static_cast<qsizetype>(wcsnlen_s(item->subgroup_guid_text, PPR_GUID_CCH)));
     const QString settingGuid = QString::fromWCharArray(item->setting_guid_text, static_cast<qsizetype>(wcsnlen_s(item->setting_guid_text, PPR_GUID_CCH)));
     const QString description = QString::fromWCharArray(item->description, static_cast<qsizetype>(wcsnlen_s(item->description, PPR_DESC_CCH)));
-    const QString hiddenText = item->hidden ? "是" : "否";
+    const QString hiddenText = item->hidden ? tr("是") : tr("否");
 
     QTreeWidgetItem *subgroupItem = subgroupItems.value(subgroupGuid, nullptr);
 
@@ -777,25 +777,25 @@ void MainWindow::addPowerSettingItem(const PowerSettingItem *item) {
     settingItem->setData(ColumnName, RoleHasDc, item->has_dc_value);
     settingItem->setData(ColumnName, RoleDcValue, item->has_dc_value ? static_cast<quint32>(item->dc_value) : 0u);
 
-    QString tooltip = QString("<b>%1</b><br/><b>状态：</b>%2<br/><b>GUID：</b>%3")
-        .arg(settingName, item->hidden ? "隐藏" : "可见", settingGuid);
+    QString tooltip = tr("<b>%1</b><br/><b>状态：</b>%2<br/><b>GUID：</b>%3")
+        .arg(settingName, item->hidden ? tr("隐藏") : tr("可见"), settingGuid);
 
     if (item->has_ac_value || item->has_dc_value) {
-        tooltip += "<br/><br/><b>当前配置值：</b>";
+        tooltip += tr("<br/><br/><b>当前配置值：</b>");
         if (item->has_ac_value) {
-            tooltip += QString("<br/>• 接通电源 (AC)：%1 (0x%2)")
+            tooltip += tr("<br/>• 接通电源 (AC)：%1 (0x%2)")
                 .arg(item->ac_value)
                 .arg(QString::number(item->ac_value, 16).toUpper().rightJustified(8, '0'));
         }
         if (item->has_dc_value) {
-            tooltip += QString("<br/>• 使用电池 (DC)：%1 (0x%2)")
+            tooltip += tr("<br/>• 使用电池 (DC)：%1 (0x%2)")
                 .arg(item->dc_value)
                 .arg(QString::number(item->dc_value, 16).toUpper().rightJustified(8, '0'));
         }
     }
 
     if (!description.isEmpty()) {
-        tooltip += QString("<br/><br/><b>说明：</b><br/>%1").arg(description);
+        tooltip += tr("<br/><br/><b>说明：</b><br/>%1").arg(description);
     }
 
     settingItem->setToolTip(ColumnName, tooltip);
@@ -868,14 +868,14 @@ void MainWindow::applyFilter() {
 
     if (hasQuery) {
         statusLabel->setText(
-            QString("显示 %1 / %2 项，%3 个分类")
+            tr("显示 %1 / %2 项，%3 个分类")
                 .arg(visibleSettingCount)
                 .arg(totalSettingCount)
                 .arg(visibleSubgroupCount)
         );
     } else {
         statusLabel->setText(
-            QString("%1 项，%2 个分类")
+            tr("%1 项，%2 个分类")
                 .arg(totalSettingCount)
                 .arg(tree->topLevelItemCount())
         );
@@ -923,8 +923,8 @@ void MainWindow::setSelectedSettingHidden(bool hidden) {
     if (item == nullptr) {
         QMessageBox::information(
             this,
-            "未选择设置项",
-            "请先选择一个具体的电源设置项。"
+            tr("未选择设置项"),
+            tr("请先选择一个具体的电源设置项。")
         );
         return;
     }
@@ -934,10 +934,10 @@ void MainWindow::setSelectedSettingHidden(bool hidden) {
     if (currentlyHidden == hidden) {
         QMessageBox::information(
             this,
-            "无需修改",
+            tr("无需修改"),
             hidden
-                ? "这个设置项当前已经是隐藏状态。"
-                : "这个设置项当前已经是可见状态。"
+                ? tr("这个设置项当前已经是隐藏状态。")
+                : tr("这个设置项当前已经是可见状态。")
         );
         return;
     }
@@ -946,23 +946,21 @@ void MainWindow::setSelectedSettingHidden(bool hidden) {
     const QString subgroupGuidText = item->data(ColumnName, RoleSubgroupGuid).toString();
     const QString settingGuidText = item->data(ColumnName, RoleSettingGuid).toString();
 
-    const QString actionText = hidden ? "隐藏" : "取消隐藏";
-    const QString currentStateText = currentlyHidden ? "隐藏" : "可见";
-    const QString targetStateText = hidden ? "隐藏" : "可见";
+    const QString actionText = hidden ? tr("隐藏") : tr("取消隐藏");
+    const QString currentStateText = currentlyHidden ? tr("隐藏") : tr("可见");
+    const QString targetStateText = hidden ? tr("隐藏") : tr("可见");
 
     const QMessageBox::StandardButton answer = QMessageBox::question(
         this,
-        hidden ? "确认隐藏设置项" : "确认取消隐藏设置项",
-        QString(
-            "请确认以下修改：\n\n"
-            "操作：%1\n\n"
-            "设置项：\n%2\n\n"
-            "当前状态：%3\n"
-            "目标状态：%4\n\n"
-            "Subgroup GUID：\n%5\n\n"
-            "Setting GUID：\n%6\n\n"
-            "建议在修改前先创建系统还原点，或使用“备份注册表”导出备份。"
-        ).arg(
+        hidden ? tr("确认隐藏设置项") : tr("确认取消隐藏设置项"),
+        tr("请确认以下修改：\n\n"
+   "操作：%1\n\n"
+   "设置项：\n%2\n\n"
+   "当前状态：%3\n"
+   "目标状态：%4\n\n"
+   "Subgroup GUID：\n%5\n\n"
+   "Setting GUID：\n%6\n\n"
+   "建议在修改前先创建系统还原点，或使用“备份注册表”导出备份。").arg(
             actionText,
             settingName,
             currentStateText,
@@ -987,8 +985,8 @@ void MainWindow::setSelectedSettingHidden(bool hidden) {
     if (!parse_guid_text(subgroupWide.c_str(), &subgroupGuid)) {
         QMessageBox::critical(
             this,
-            "无效 GUID",
-            QString("Subgroup GUID 无效：\n%1").arg(subgroupGuidText)
+            tr("无效 GUID"),
+            tr("Subgroup GUID 无效：\n%1").arg(subgroupGuidText)
         );
         return;
     }
@@ -996,8 +994,8 @@ void MainWindow::setSelectedSettingHidden(bool hidden) {
     if (!parse_guid_text(settingWide.c_str(), &settingGuid)) {
         QMessageBox::critical(
             this,
-            "无效 GUID",
-            QString("Setting GUID 无效：\n%1").arg(settingGuidText)
+            tr("无效 GUID"),
+            tr("Setting GUID 无效：\n%1").arg(settingGuidText)
         );
         return;
     }
@@ -1017,15 +1015,15 @@ void MainWindow::setSelectedSettingHidden(bool hidden) {
     );
 
     if (rc != ERROR_SUCCESS) {
-        QString message = QString("操作失败。错误代码：%1").arg(rc);
+        QString message = tr("操作失败。错误代码：%1").arg(rc);
 
         if (rc == ERROR_ACCESS_DENIED) {
-            message += "\n\n访问被拒绝。请确认程序已以管理员身份运行。";
+            message += tr("\n\n访问被拒绝。请确认程序已以管理员身份运行。");
         }
 
         QMessageBox::critical(
             this,
-            "操作失败",
+            tr("操作失败"),
             message
         );
 
@@ -1037,8 +1035,8 @@ void MainWindow::setSelectedSettingHidden(bool hidden) {
     if (refreshRc != ERROR_SUCCESS) {
         QMessageBox::warning(
             this,
-            "刷新当前电源计划失败",
-            QString("设置项已经修改成功，但刷新当前电源计划失败。错误代码：%1")
+            tr("刷新当前电源计划失败"),
+            tr("设置项已经修改成功，但刷新当前电源计划失败。错误代码：%1")
                 .arg(refreshRc)
         );
     }
@@ -1055,20 +1053,18 @@ void MainWindow::setSelectedSettingHidden(bool hidden) {
 
     const QString hiddenFilterNotice =
         onlyHiddenCheckBox->isChecked() && !hidden
-            ? "注意：当前启用了“仅显示隐藏项”，这个设置项取消隐藏后会从列表中消失。"
+            ? tr("注意：当前启用了“仅显示隐藏项”，这个设置项取消隐藏后会从列表中消失。")
             : "";
 
     QMessageBox::information(
         this,
-        "完成",
-        QString(
-            "%1\n\n"
-            "设置项：\n%2\n\n"
-            "修改前 attributes：0x%3\n"
-            "修改后 attributes：0x%4\n\n"
-            "%5"
-        ).arg(
-            hidden ? "设置项已经隐藏。" : "设置项已经取消隐藏。",
+        tr("完成"),
+        tr("%1\n\n"
+           "设置项：\n%2\n\n"
+           "修改前 attributes：0x%3\n"
+           "修改后 attributes：0x%4\n\n"
+           "%5").arg(
+            hidden ? tr("设置项已经隐藏。") : tr("设置项已经取消隐藏。"),
             settingName,
             beforeAttributesText,
             afterAttributesText,
@@ -1079,7 +1075,7 @@ void MainWindow::setSelectedSettingHidden(bool hidden) {
     reloadTree();
 
     statusLabel->setText(
-        hidden ? "设置项已隐藏" : "设置项已取消隐藏"
+        hidden ? tr("设置项已隐藏") : tr("设置项已取消隐藏")
     );
 }
 
@@ -1089,8 +1085,8 @@ void MainWindow::copySelectedGuids() {
     if (item == nullptr) {
         QMessageBox::information(
             this,
-            "未选择设置项",
-            "请先选择一个具体的电源设置项。"
+            tr("未选择设置项"),
+            tr("请先选择一个具体的电源设置项。")
         );
         return;
     }
@@ -1103,14 +1099,14 @@ void MainWindow::copySelectedGuids() {
 
     QApplication::clipboard()->setText(text);
 
-    statusLabel->setText("GUID 已复制");
+    statusLabel->setText(tr("GUID 已复制"));
 }
 
 void MainWindow::copySelectedName() {
     QTreeWidgetItem *item = selectedSettingItem();
     if (item != nullptr) {
         QApplication::clipboard()->setText(item->text(ColumnName));
-        statusLabel->setText("名称已复制");
+        statusLabel->setText(tr("名称已复制"));
     }
 }
 
@@ -1123,7 +1119,7 @@ void MainWindow::copySelectedRegistryPath() {
             "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Power\\PowerSettings\\%1\\%2"
         ).arg(subgroupGuid, settingGuid);
         QApplication::clipboard()->setText(regPath);
-        statusLabel->setText("注册表路径已复制");
+        statusLabel->setText(tr("注册表路径已复制"));
     }
 }
 
@@ -1135,7 +1131,7 @@ void MainWindow::openSelectedInRegedit() {
     const QString subgroupGuid = item->data(ColumnName, RoleSubgroupGuid).toString();
     const QString settingGuid = item->data(ColumnName, RoleSettingGuid).toString();
     open_in_regedit(subgroupGuid.toStdWString().c_str(), settingGuid.toStdWString().c_str());
-    statusLabel->setText("已打开注册表编辑器");
+    statusLabel->setText(tr("已打开注册表编辑器"));
 }
 
 void MainWindow::showTreeContextMenu(const QPoint &pos) {
@@ -1150,7 +1146,7 @@ void MainWindow::showTreeContextMenu(const QPoint &pos) {
     if (itemType == ItemTypeSetting) {
         const bool hidden = item->data(ColumnName, RoleHidden).toInt() != 0;
         menu.addAction(
-            hidden ? "取消隐藏此项" : "隐藏此项",
+            hidden ? tr("取消隐藏此项") : tr("隐藏此项"),
             this,
             [this, hidden]() {
                 setSelectedSettingHidden(!hidden);
@@ -1159,20 +1155,20 @@ void MainWindow::showTreeContextMenu(const QPoint &pos) {
 
         menu.addSeparator();
 
-        menu.addAction("复制设置项名称", this, &MainWindow::copySelectedName);
-        menu.addAction("复制 GUID (Subgroup & Setting)", this, &MainWindow::copySelectedGuids);
-        menu.addAction("复制完整注册表路径", this, &MainWindow::copySelectedRegistryPath);
-        menu.addAction("在注册表编辑器中定位", this, &MainWindow::openSelectedInRegedit);
+        menu.addAction(tr("复制设置项名称"), this, &MainWindow::copySelectedName);
+        menu.addAction(tr("复制 GUID (Subgroup & Setting)"), this, &MainWindow::copySelectedGuids);
+        menu.addAction(tr("复制完整注册表路径"), this, &MainWindow::copySelectedRegistryPath);
+        menu.addAction(tr("在注册表编辑器中定位"), this, &MainWindow::openSelectedInRegedit);
     } else if (itemType == ItemTypeSubgroup) {
         const QString subgroupName = item->text(ColumnName);
         const QString subgroupGuid = item->data(ColumnName, RoleSubgroupGuid).toString();
-        menu.addAction("复制分类名称", this, [subgroupName]() {
+        menu.addAction(tr("复制分类名称"), this, [subgroupName]() {
             QApplication::clipboard()->setText(subgroupName);
         });
-        menu.addAction("复制 Subgroup GUID", this, [subgroupGuid]() {
+        menu.addAction(tr("复制 Subgroup GUID"), this, [subgroupGuid]() {
             QApplication::clipboard()->setText(subgroupGuid);
         });
-        menu.addAction("在注册表编辑器中定位分类", this, [subgroupGuid]() {
+        menu.addAction(tr("在注册表编辑器中定位分类"), this, [subgroupGuid]() {
             open_in_regedit(subgroupGuid.toStdWString().c_str(), NULL);
         });
     }
@@ -1198,9 +1194,9 @@ void MainWindow::backupRegistry() {
 
     const QString filePath = QFileDialog::getSaveFileName(
         this,
-        "导出电源设置注册表备份",
+        tr("导出电源设置注册表备份"),
         defaultFileName,
-        "注册表脚本 (*.reg)"
+        tr("注册表脚本 (*.reg)")
     );
 
     if (filePath.isEmpty()) {
@@ -1211,18 +1207,18 @@ void MainWindow::backupRegistry() {
     if (rc == 0) {
         QMessageBox::information(
             this,
-            "备份成功",
-            QString("电源设置注册表已成功导出备份至：\n%1").arg(filePath)
+            tr("备份成功"),
+            tr("电源设置注册表已成功导出备份至：\n%1").arg(filePath)
         );
-        statusLabel->setText("注册表已备份");
+        statusLabel->setText(tr("注册表已备份"));
     } else {
-        QString message = QString("导出注册表备份失败。错误代码：%1").arg(rc);
+        QString message = tr("导出注册表备份失败。错误代码：%1").arg(rc);
         if (rc == ERROR_ACCESS_DENIED) {
             message += "\n\n访问被拒绝。请确认程序已具备管理员权限。";
         }
         QMessageBox::critical(
             this,
-            "备份失败",
+            tr("备份失败"),
             message
         );
     }
@@ -1278,26 +1274,26 @@ void MainWindow::openNativePowerSettings() {
     if (reinterpret_cast<INT_PTR>(res) <= 32) {
         QMessageBox::warning(
             this,
-            "打开失败",
-            "未能成功启动 Windows 控制面板。您可以按 Win+R 手动运行：\ncontrol.exe powercfg.cpl,,1"
+            tr("打开失败"),
+            tr("未能成功启动 Windows 控制面板。您可以按 Win+R 手动运行：\ncontrol.exe powercfg.cpl,,1")
         );
     } else {
-        statusLabel->setText("已打开高级设置");
+        statusLabel->setText(tr("已打开高级设置"));
     }
 }
 
 void MainWindow::showAboutDialog() {
     QMessageBox box(this);
-    box.setWindowTitle("关于 PowerPlanRevealer");
+    box.setWindowTitle(tr("关于 PowerPlanRevealer"));
     box.setIconPixmap(QIcon(":/app.png").pixmap(64, 64));
-    box.setText("<h3>PowerPlanRevealer v0.3.0</h3>");
+    box.setText(tr("<h3>PowerPlanRevealer v0.3.0</h3>"));
     box.setInformativeText(
-        "<b>Windows 电源计划隐藏设置解锁器</b><br/><br/>"
-        "• <b>核心安全准则：</b>只控制隐藏与显示属性，绝不擅自修改任何电源参数数值。<br/>"
-        "• <b>开源主页：</b><a href=\"https://github.com/vusiif/power-plan-revealer\">https://github.com/vusiif/power-plan-revealer</a><br/>"
-        "• <b>作者：</b>IceLolly<br/>"
-        "• <b>开源协议：</b>MIT License<br/><br/>"
-        "致力于提供极简、透明、无公害的 Windows 高级电源设置调校辅助。"
+        tr("<b>Windows 电源计划隐藏设置解锁器</b><br/><br/>"
+           "• <b>核心安全准则：</b>只控制隐藏与显示属性，绝不擅自修改任何电源参数数值。<br/>"
+           "• <b>开源主页：</b><a href=\"https://github.com/vusiif/power-plan-revealer\">https://github.com/vusiif/power-plan-revealer</a><br/>"
+           "• <b>作者：</b>IceLolly<br/>"
+           "• <b>开源协议：</b>MIT License<br/><br/>"
+           "致力于提供极简、透明、无公害的 Windows 高级电源设置调校辅助。")
     );
     box.setStandardButtons(QMessageBox::Ok);
     box.exec();
@@ -1306,11 +1302,11 @@ void MainWindow::showAboutDialog() {
 void MainWindow::applyPreset(const QString &presetName, const QStringList &targetGuids) {
     QMessageBox::StandardButton reply = QMessageBox::question(
         this,
-        "应用场景预设",
-        QString("将为【%1】批量解锁对应的 %2 项高级电源设置。\n\n"
-                "• 作用：将相关选项在 Windows 控制面板中设置为“可见”。\n"
-                "• 安全提示：绝不会修改您的任何电源参数数值。\n\n"
-                "确定要继续吗？")
+        tr("应用场景预设"),
+        tr("将为【%1】批量解锁对应的 %2 项高级电源设置。\n\n"
+           "• 作用：将相关选项在 Windows 控制面板中设置为“可见”。\n"
+           "• 安全提示：绝不会修改您的任何电源参数数值。\n\n"
+           "确定要继续吗？")
             .arg(presetName)
             .arg(targetGuids.size()),
         QMessageBox::Yes | QMessageBox::No,
@@ -1335,13 +1331,13 @@ void MainWindow::applyPreset(const QString &presetName, const QStringList &targe
     refresh_active_scheme();
     reloadTree();
 
-    statusLabel->setText(QString("预设已应用 (%1 项)").arg(ctx.updatedCount));
+    statusLabel->setText(tr("预设已应用 (%1 项)").arg(ctx.updatedCount));
 
     QMessageBox::information(
         this,
-        "预设应用完成",
-        QString("【%1】已应用！共成功解锁并公开了 %2 项电源设置。\n\n"
-                "您可以点击界面上的“⚙ 打开高级电源设置”按钮立即在控制面板中调参。")
+        tr("预设应用完成"),
+        tr("【%1】已应用！共成功解锁并公开了 %2 项电源设置。\n\n"
+           "您可以点击界面上的“⚙ 打开高级电源设置”按钮立即在控制面板中调参。")
             .arg(presetName)
             .arg(ctx.updatedCount)
     );
@@ -1350,12 +1346,12 @@ void MainWindow::applyPreset(const QString &presetName, const QStringList &targe
 void MainWindow::resetToDefaultVisibility() {
     QMessageBox::StandardButton reply = QMessageBox::question(
         this,
-        "恢复出厂默认显隐状态",
-        "确定要将所有电源设置项的显隐状态恢复为 Windows 官方出厂默认吗？\n\n"
-        "• 约 20 项常用标准设置保持可见（如睡眠时间、关闭显示、处理器状态等）\n"
-        "• 其余所有高级设置将恢复为“隐藏”状态\n"
-        "• 注意：本操作仅恢复显示/隐藏属性，绝不会改动您的任何具体电源数值。\n\n"
-        "是否继续？",
+        tr("恢复出厂默认显隐状态"),
+        tr("确定要将所有电源设置项的显隐状态恢复为 Windows 官方出厂默认吗？\n\n"
+           "• 约 20 项常用标准设置保持可见（如睡眠时间、关闭显示、处理器状态等）\n"
+           "• 其余所有高级设置将恢复为“隐藏”状态\n"
+           "• 注意：本操作仅恢复显示/隐藏属性，绝不会改动您的任何具体电源数值。\n\n"
+           "是否继续？"),
         QMessageBox::Yes | QMessageBox::No,
         QMessageBox::No
     );
@@ -1374,29 +1370,29 @@ void MainWindow::resetToDefaultVisibility() {
     refresh_active_scheme();
     reloadTree();
 
-    statusLabel->setText("已恢复默认显隐");
+    statusLabel->setText(tr("已恢复默认显隐"));
 
     QMessageBox::information(
         this,
-        "已恢复默认显隐状态",
-        QString("已成功恢复 Windows 原厂出厂显隐状态！\n\n"
-                "• 保持可见项：%1 项\n"
-                "• 恢复隐藏项：%2 项\n\n"
-                "所有参数数值均保持原样未变。")
+        tr("已恢复默认显隐状态"),
+        tr("已成功恢复 Windows 原厂出厂显隐状态！\n\n"
+           "• 保持可见项：%1 项\n"
+           "• 恢复隐藏项：%2 项\n\n"
+           "所有参数数值均保持原样未变。")
             .arg(ctx.unhideCount)
             .arg(ctx.hideCount)
     );
 }
 
 void MainWindow::setAllSettingsHidden(bool hidden) {
-    const QString actionName = hidden ? "全部隐藏" : "全部取消隐藏";
+    const QString actionName = hidden ? tr("全部隐藏") : tr("全部取消隐藏");
 
     QMessageBox::StandardButton reply = QMessageBox::question(
         this,
         actionName,
-        QString("确定要将系统中所有的电源设置项【%1】吗？\n\n"
-                "• 提示：这只会修改设置项在控制面板中的显隐属性，不会修改任何参数数值。\n\n"
-                "是否继续？")
+        tr("确定要将系统中所有的电源设置项【%1】吗？\n\n"
+   "• 提示：这只会修改设置项在控制面板中的显隐属性，不会修改任何参数数值。\n\n"
+   "是否继续？")
             .arg(actionName),
         QMessageBox::Yes | QMessageBox::No,
         QMessageBox::No
@@ -1415,12 +1411,12 @@ void MainWindow::setAllSettingsHidden(bool hidden) {
     refresh_active_scheme();
     reloadTree();
 
-    statusLabel->setText(hidden ? "已全部隐藏" : "已全部解锁");
+    statusLabel->setText(hidden ? tr("已全部隐藏") : tr("已全部解锁"));
 
     QMessageBox::information(
         this,
-        "完成",
-        QString("操作完成！已成功对 %1 项设置执行【%2】。").arg(ctx.count).arg(actionName)
+        tr("完成"),
+        tr("操作完成！已成功对 %1 项设置执行【%2】。").arg(ctx.count).arg(actionName)
     );
 }
 
